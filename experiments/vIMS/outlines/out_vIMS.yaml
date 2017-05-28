@@ -1,0 +1,55 @@
+id: 007
+name: 'vIMS v1.0'
+
+inputs:
+  host_mon_homestead: 'vm3'
+  host_mon_sprout: 'vm4'
+  host_mon_bono: 'vm5'
+  interval: 1
+  duration: 20
+  host_agent: 'vm1'
+  sipproxy_address: '192.168.1.200'
+  subscribersDB: '/home/vm1/subscribers.csv'
+  transactionsStep: 100
+  stepsInterval: 2
+  simultaneousTransactions: 1000
+  maxTransactions: 1000
+
+sketches:
+  - source: 'host.yaml'
+    groupings: null
+    inputs:
+      interval: {{ interval }}
+      duration: {{ duration }}
+      host: {{ host_mon_homestead }}
+
+  - source: 'host.yaml'
+    groupings: null
+    inputs:
+      interval: {{ interval }}
+      duration: {{ duration }}
+      host: {{ host_mon_sprout }}
+
+  - source: 'host.yaml'
+    groupings: null
+    inputs:
+      interval: {{ interval }}
+      duration: {{ duration }}
+      host: {{ host_mon_bono }}
+
+  - source: 'sipp.yaml'
+    groupings: null
+    inputs:
+      sipproxy_address: {{ sipproxy_address }}
+      subscribersDB: {{ subscribersDB }}
+      simultaneousTransactions: {{ simultaneousTransactions }}
+      transactionsStep: {{ transactionsStep }}
+      maxTransactions: {{ maxTransactions }}
+      stepsInterval: {{ stepsInterval }}
+      host: {{ host_agent }}
+
+
+cycles:
+  when: null
+  repeat: 10
+  every: 60
