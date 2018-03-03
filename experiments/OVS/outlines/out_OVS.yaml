@@ -1,0 +1,45 @@
+
+id: 3
+name: 'OVS-benchmarking'
+
+inputs:
+  host_src: 'src'
+  mon_process_name: 'ovs-vswitchd'
+  host_mon: ''
+  device: ''
+  duration: 30
+  frame_size: 64
+  src_ip: ''
+  src_mac: ''
+  dst_ip: ''
+  dst_mac: ''
+  interval: 1
+
+groups: null
+
+sketches:
+  - source: 'process.yaml'
+    groupings: null
+    inputs:
+      name: {{ mon_process_name }}
+      duration: {{ duration }}
+      interval: {{ interval }}
+      host: {{ host_mon }}
+
+  - source: 'bandwidth.yaml'
+    groupings: null
+    inputs:
+      device: {{ device }}
+      duration: {{ duration }}
+      frame_size: {{ frame_size }}
+      src_ip: {{ src_ip }}
+      src_mac:  {{ src_mac }}
+      dst_ip:  {{ dst_ip }}
+      dst_mac:  {{ dst_mac }}
+      host: {{ host_src }}
+
+
+cycles:
+  when: null
+  repeat: 30
+  every: 60
