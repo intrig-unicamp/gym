@@ -81,6 +81,8 @@ There are 4 tests enabled by default in the run.sh file. Each one of the tests r
 For instance, to be able to run tests 1, 2 and 3, you must install:
 * Containernet: https://containernet.github.io/
 
+Important: Tests were performed on Ubuntu 18.04.
+
 ### Test 0
 
 Performs the execution of two agents just executing ping commands locally on the host machine.
