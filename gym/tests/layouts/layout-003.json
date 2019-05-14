@@ -1,0 +1,121 @@
+{
+    "id": "003",
+    "method": "layout",
+    "params": {
+        "callback": "http://127.0.0.1:7879/001",
+        "vnf_bd": {
+            "id": "003",
+            "inputs": {
+                "orchestration": {
+                    "deploy": true,
+                    "plugin": "containernet",
+                    "entrypoint": "http://127.0.0.1:7878/001/"
+                },
+                "sut": {
+                    "id": "d2",
+                    "name": "suricata_vnf",
+                    "type": "sut",
+                    "version": 0.1,
+                    "image": "vnf/suricata:0.1",
+                    "author": "None",
+                    "vendor": "None",
+                    "description": "Suricata VNF for testing only",
+                    "entrypoint": ["./start.sh big_ruleset", "./start.sh small_ruleset", "./start.sh empty"],
+                    "ports": {
+                        "input":{
+                            "id": "input",
+                            "type": "internal",
+                            "address": "172.31.1.2/24"
+                        },
+                        "output":{
+                            "id": "output",
+                            "type": "internal",
+                            "address": "172.31.1.3/24"
+                        }
+                    },
+                    "resources": {
+                        "vcpus": 1,
+                        "mem_size": 2048
+                    }
+                },
+                "agent_one": {
+                    "id":"d1",
+                    "type": "agent",
+                    "image": "raphaelvrosa/gym:0.1",
+                    "entrypoint": "gym-agent --id {host_id} --url http://{host_ip}:8988 > gym-agent.log 2>&1 &",
+                    "volumes": "/mnt/pcaps/:/mnt/pcaps:rw",
+                    "ports": {
+                        "input":{
+                            "id": "eth1",
+                            "type": "internal",
+                            "address": "172.31.1.1/24"
+                        }
+                    }
+                },
+                "agent_two": {
+                    "id":"d3",
+                    "type": "agent",
+                    "image": "raphaelvrosa/gym:0.1",
+                    "entrypoint": "gym-agent --id {host_id} --url http://{host_ip}:8988 > gym-agent.log 2>&1 &",
+                    "volumes": "",
+                    "ports": {
+                        "input":{
+                            "id": "eth1",
+                            "type": "internal",
+                            "address": "172.31.1.4/24"
+                        }
+                    }
+                },
+                "manager": {
+                    "id":"d6",
+                    "type": "manager",
+                    "image": "raphaelvrosa/gym:0.1",
+                    "entrypoint": "gym-manager --id {host_id} --url http://{host_ip}:8989 > gym-mngr.log 2>&1 &",
+                    "volumes": ""
+                },
+                "monitor": {
+                    "id":"d4",
+                    "type": "monitor",
+                    "image": "",
+                    "entrypoint": "gym-monitor --id {host_id} --url http://{host_ip}:8987  > gym-mon.log 2>&1 &",
+                    "volumes": ""
+                },
+                "monitor_tap": {
+                    "id":"d5",
+                    "type": "monitor",
+                    "image": "",
+                    "entrypoint": "gym-monitor --id {host_id} --url http://{host_ip}:8987 > gym-mon.log 2>&1 &",
+                    "volumes": ""
+                },
+                "settings": {
+                    "trials": 1,
+                    "duration":"30",
+                    "interval": "1",
+                    "vm_mon_interface": "input",
+                    "agent_one": {
+                        "replay_instances": "0",
+                        "replay_interface": "eth1",
+                        "pcap": ["bigFlows.pcap", "smallFlows.pcap"],
+                        "preload": "true",
+                        "speed": "true"
+                    },
+                    "monitor": {
+                        "mon_container_target": "mn.d2"
+                    }
+                },
+                "links": {
+                    "network_one": "s1",
+                    "network_two": "s2",
+                    "network_type": "E-Flow"
+                }                
+            }
+        },
+        "time": {
+            "duration": null,
+            "every": 0,
+            "repeat": 0,
+            "timestamp": "Tue, 28 Feb 2017 12:18:05",
+            "when": null
+        }
+    }
+}

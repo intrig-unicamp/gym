@@ -1,0 +1,172 @@
+
+descriptor_version: 0.01
+id: "002"
+name: "vnf-bd-002"
+version: "0.1"
+author: "Raphael Vicente Rosa"
+description: "Realizes the test of two agents realizing ping/iperf on a dummy VNF, while monitoring it externally"
+
+
+procedures:
+  repeat:
+    trials: {{ settings.trials }}
+    tests: 1
+    methods: 1
+
+targets:
+  - id: "{{ sut.id }}"
+    name: "{{ sut.name }}"
+    version: "{{ sut.version }}"
+    author: "{{ sut.author }}"
+    vendor: "{{ sut.vendor }}"
+    description: "{{ sut.description }}"
+
+scenario:
+  orchestration: 
+    deploy: "{{ orchestration.deploy }}"
+    plugin: "{{ orchestration.plugin }}"
+    entrypoint: "{{ orchestration.entrypoint }}"
+  topology:
+    nodes:
+      - id: "{{ sut.id }}"
+        type: "{{ sut.type }}"
+        image:  "{{ sut.image }}"
+        image_format: "docker"
+        entrypoint: "{{ sut.entrypoint }}"
+        connection_points:
+          - id: "{{ sut.ports.input.id }}"
+            type: "{{ sut.ports.input.type }}"
+            address: "{{ sut.ports.input.address }}"
+          - id: "{{ sut.ports.output.id }}"
+            type: "{{ sut.ports.output.type }}"
+            address: "{{ sut.ports.output.address }}"
+      - id:  "{{ agent_one.id }}"
+        image:  "{{ agent_one.image }}"
+        image_format: "docker"
+        type: "{{ agent_one.type }}"
+        entrypoint: "{{ agent_one.entrypoint }}"
+        connection_points:
+          - id: "{{ agent_one.ports.input.id or 'eth1' }}"
+            interface: "ipv4"
+            type: "internal"
+            address: "{{ agent_one.ports.input.address }}"
+      - id:  "{{ agent_two.id }}"
+        image:  "{{ agent_two.image }}"
+        image_format: "docker"
+        type: "{{ agent_two.type }}"
+        entrypoint: "{{ agent_two.entrypoint }}"
+        connection_points:
+          - id: "{{ agent_two.ports.input.id or 'eth1' }}"
+            interface: "ipv4"
+            type: "internal"
+            address: "{{ agent_two.ports.input.address }}"
+      - id:  "{{ manager.id }}"
+        image:  "{{ manager.image }}"
+        image_format: "docker"
+        type: "{{ manager.type }}"
+        entrypoint: "{{ manager.entrypoint }}"
+        connection_points: null
+      - id:  "{{ monitor.id }}"
+        image:  null
+        image_format: "process"
+        type: "{{ monitor.type }}"
+        entrypoint: "{{ monitor.entrypoint }}"
+        connection_points: null
+        habitat:
+          setting: "process"
+          location: "external"
+          target: "{{ sut.id }}"
+    links:
+      - id: "{{ agent_one.id }}-{{ sut.id }}"
+        type: "{{ links.network_type or 'E-LAN' }}"
+        network: "{{ links.network_one or 's1'}}"
+        connection_points:
+          - "{{ agent_one.id }}:{{ agent_one.ports.input.id or 'eth1' }}"
+          - "{{ sut.id }}:{{ sut.ports.input.id or 'input' }}"
+      - id: "{{ sut_id }}-{{ agent_2_id }}"
+        type: "{{ links.network_type or 'E-LAN' }}"
+        network: "{{ links.network_two or 's2' }}"
+        connection_points:
+          - "{{ sut.id }}:{{ sut.ports.output.id or 'output' }}"
+          - "{{ agent_two.id }}:{{ agent_two.ports.input.id or 'eth1' }}"
+  requirements:
+    - id: "{{ sut.id }}"
+      resources:
+        cpu:
+          vcpus: {{ sut.resources.vcpus }}  # CPU cores
+          bw: {{ sut.resources.cpu_cores }}  # CPU time
+        memory:
+          size: {{ sut.resources.mem_size }}
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"
+    - id: "{{ agent_one.id }}"
+      resources:
+        cpu:
+          vcpus: {{ agent_one_resource_cpu_cores or 1 }}  # CPU cores
+          bw: {{ agent_one_resource_cpu_bw or 1.0 }}  # CPU time
+        memory:
+          size: {{ agent_one_resource_mem or 1024 }}
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"
+    - id: "{{ agent_two.id }}"
+      resources:
+        cpu:
+          vcpus: {{ agent_two_resource_cpu_cores or 1 }}  # CPU cores
+          bw: {{ agent_two_resource_cpu_bw or '1.0' }}  # CPU time
+        memory:
+          size: {{ agent_two_resource_mem or 1024 }}
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"
+    - id: "{{ manager.id }}"
+      resources:
+        cpu:
+          vcpus: {{ manager_resource_cpu_cores or 1 }}  # CPU cores
+          bw: {{ manager_resource_cpu_bw or '1.0' }}  # CPU time
+        memory:
+          size: {{ manager_resource_mem or 1024 }}
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"        
+settings:
+  vnfs:
+    - id: "{{ sut.id }}"
+  agents:
+    - id: "{{ agent_one.id }}"
+      probers:
+        - id: 4
+          parameters:
+            client: True
+            server: "{{ settings.server }}"
+            port: "{{ settings.port }}"
+            protocol: "{{ settings.protocol }}"
+            duration: "{{ settings.duration }}"
+            rate: "{{ settings.rate }}"
+        - id: 2
+          parameters:
+            interval: null
+            duration: "{{ settings.duration }}"
+            packets: null
+            frame_size: null
+            target: "{{ settings.server }}"
+    - id: "{{ agent_two.id }}"
+      probers:
+        - id: 4
+          parameters:
+            client: False
+            port: "{{ settings.port }}"
+            duration: "{{ settings.duration }}"
+  monitors:
+    - id: "{{ monitor.id }}"
+      listeners:
+        - id: 17
+          parameters:
+            target: "{{ settings.monitor.mon_container_target }}"
+            duration: "{{ settings.duration }}"
+            interval: "{{ settings.interval }}"

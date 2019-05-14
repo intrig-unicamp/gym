@@ -1,0 +1,11 @@
+{
+    "id": "000",
+    "method": "layout",
+    "params": {
+        "callback": "http://127.0.0.1:7879/001",
+        "vnf_bd": {
+            "id": "000",
+            "inputs": {}
+        }
+    }
+}

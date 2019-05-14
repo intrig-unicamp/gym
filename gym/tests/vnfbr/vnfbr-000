@@ -1,0 +1,218 @@
+{
+    "id": "000",
+    "response": "vnfbr",
+    "result": {
+        "error": {},
+        "timestamp": "2019-05-13T18:09:43.535465Z",
+        "vnfbd": {
+            "author": "Raphael Vicente Rosa",
+            "description": "Realizes the test of two agents ping on localhost",
+            "id": "000",
+            "name": "vnf-bd-0.00",
+            "procedures": {
+                "repeat": {
+                    "methods": 1,
+                    "tests": 1,
+                    "trials": 1
+                }
+            },
+            "scenario": {
+                "orchestration": {
+                    "deploy": false,
+                    "entrypoint": null,
+                    "plugin": null
+                },
+                "requirements": null,
+                "settings": {
+                    "agents": [
+                        {
+                            "id": "agent-1",
+                            "probers": [
+                                {
+                                    "id": 2,
+                                    "parameters": {
+                                        "duration": null,
+                                        "frame_size": "64",
+                                        "interval": "1",
+                                        "packets": "5",
+                                        "target": "www.google.com"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": "agent-2",
+                            "probers": [
+                                {
+                                    "id": 2,
+                                    "parameters": {
+                                        "duration": "5",
+                                        "frame_size": "128",
+                                        "interval": null,
+                                        "packets": null,
+                                        "target": "127.0.0.1"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "topology": {
+                    "nodes": [
+                        {
+                            "entrypoint": null,
+                            "id": "agent-1",
+                            "image": null,
+                            "image_format": null,
+                            "type": "agent"
+                        },
+                        {
+                            "entrypoint": null,
+                            "id": "agent-2",
+                            "image": null,
+                            "image_format": null,
+                            "type": "agent"
+                        },
+                        {
+                            "entrypoint": null,
+                            "id": "manager",
+                            "image": null,
+                            "image_format": null,
+                            "type": "manager"
+                        }
+                    ]
+                }
+            },
+            "settings": {
+                "agents": [
+                    {
+                        "id": "agent-1",
+                        "probers": [
+                            {
+                                "id": 2,
+                                "parameters": {
+                                    "duration": null,
+                                    "frame_size": "64",
+                                    "interval": "1",
+                                    "packets": "5",
+                                    "target": "www.google.com"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "id": "agent-2",
+                        "probers": [
+                            {
+                                "id": 2,
+                                "parameters": {
+                                    "duration": "5",
+                                    "frame_size": "128",
+                                    "interval": null,
+                                    "packets": null,
+                                    "target": "127.0.0.1"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "targets": [
+                {
+                    "author": null,
+                    "description": "The host machine",
+                    "id": null,
+                    "name": "localhost",
+                    "vendor": null,
+                    "version": null
+                }
+            ],
+            "version": "0.1"
+        },
+        "vnfpp": {
+            "id": "000",
+            "reports": [
+                {
+                    "component": "manager",
+                    "host": "paps",
+                    "id": 500,
+                    "inputs": {
+                        "id": 500
+                    },
+                    "role": "manager",
+                    "snapshots": [
+                        {
+                            "component": null,
+                            "evaluations": [
+                                {
+                                    "id": "5252",
+                                    "metrics": {
+                                        "frame_loss": {
+                                            "frame_loss": 0.0,
+                                            "frames": 5.0,
+                                            "units": "%"
+                                        },
+                                        "latency": {
+                                            "rtt_avg": 22.197,
+                                            "rtt_max": 38.687,
+                                            "rtt_mdev": 9.366,
+                                            "rtt_min": 9.694,
+                                            "units": "ms"
+                                        }
+                                    },
+                                    "series": false,
+                                    "timestamp": "2019-05-13T18:09:42.478884Z",
+                                    "tool": 2,
+                                    "type": "prober"
+                                }
+                            ],
+                            "host": "paps",
+                            "id": "2888",
+                            "role": "agent",
+                            "timestamp": "2019-05-13T18:09:42.479631Z"
+                        },
+                        {
+                            "component": null,
+                            "evaluations": [
+                                {
+                                    "id": "2241",
+                                    "metrics": {
+                                        "frame_loss": {
+                                            "frame_loss": 0.0,
+                                            "frames": 5.0,
+                                            "units": "%"
+                                        },
+                                        "latency": {
+                                            "rtt_avg": 0.086,
+                                            "rtt_max": 0.102,
+                                            "rtt_mdev": 0.021,
+                                            "rtt_min": 0.043,
+                                            "units": "ms"
+                                        }
+                                    },
+                                    "series": false,
+                                    "timestamp": "2019-05-13T18:09:43.334357Z",
+                                    "tool": 2,
+                                    "type": "prober"
+                                }
+                            ],
+                            "host": "paps",
+                            "id": "186",
+                            "role": "agent",
+                            "timestamp": "2019-05-13T18:09:43.334987Z"
+                        }
+                    ],
+                    "timestamp": "2019-05-13T18:09:43.359670Z"
+                }
+            ],
+            "view_desc": {
+                "filename": "vnfpp_",
+                "inputs": [],
+                "metrics": {
+                    "agent": "all",
+                    "monitor": "all"
+                }
+            }
+        }
+    }
+}

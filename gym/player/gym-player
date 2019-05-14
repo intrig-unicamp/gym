@@ -1,0 +1,48 @@
+#!/usr/bin/env python3.6
+# coding=utf-8
+
+import logging
+logger = logging.getLogger(__name__)
+
+import sys
+from aiohttp import web
+
+from gym.common.logs import Logs
+from gym.common.cfg import Config
+from gym.player.player import Player
+from gym.common.asyncs.app import App
+
+
+class GymPlayer(App):
+    def __init__(self):
+        App.__init__(self)
+        self.cfg = Config()
+        
+    def logs(self, info):
+        filename = "/tmp/gym-player-" + str(info.get("id")) + ".log"
+        Logs(filename, debug=info.get("debug"))
+     
+    def set_routes(self):
+        self.route("POST", "/{identifier}", self.handle)
+        self.route("GET", "/info", self.info)
+
+    async def info(self, request):
+        return web.HTTPOk(text="Info")
+
+    def run(self, argv):
+        info = self.cfg.get_config(argv)
+        if info:
+            self.logs(info)           
+            self.handler = Player(info, self.in_queue, self.out_queue)
+            try:
+                self.main(info.get("url"))
+            except Exception as e:
+                logger.error("Exception on main App: %s", e)
+        else:
+            print("Could not start Player")
+            return -1
+
+
+if __name__ == '__main__':
+    gym_player = GymPlayer()
+    gym_player.run(sys.argv[1:])

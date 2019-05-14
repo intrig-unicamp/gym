@@ -1,0 +1,68 @@
+descriptor_version: 0.02
+id: "000"
+name: "vnf-bd-0.00"
+version: "0.1"
+author: "Raphael Vicente Rosa"
+description: "Realizes the test of two agents ping on localhost"
+
+procedures:
+  repeat:
+    trials: 1
+    tests: 1
+    methods: 1
+
+targets:
+  - id: null
+    name: "localhost"
+    version: null
+    author: null
+    vendor: null
+    description: "The host machine" 
+
+scenario:
+  orchestration: 
+    deploy: false
+    plugin: null
+    entrypoint: null
+
+  topology:
+    nodes:
+      - id:  "agent-1"
+        image:  null
+        image_format: null
+        type: "agent"
+        entrypoint: null
+      - id:  "agent-2"
+        image:  null
+        image_format: null
+        type: "agent"
+        entrypoint: null
+      - id:  "manager"
+        image:  null
+        image_format: null
+        type: "manager"
+        entrypoint: null
+
+  requirements: null
+
+
+settings:
+  agents:
+    - id: "agent-1"
+      probers:
+        - id: 2
+          parameters:
+            interval: '1'
+            duration: null
+            packets: '5'
+            frame_size: '64'
+            target: 'www.google.com'
+    - id: "agent-2"
+      probers:
+        - id: 2
+          parameters:
+            interval: null
+            duration: "5"
+            packets: null
+            frame_size: '128'
+            target: '127.0.0.1'
