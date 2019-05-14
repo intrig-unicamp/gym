@@ -107,7 +107,7 @@ Gym is released under Apache 2.0 license.
 
 # Contact
 
-If you have any issues, please use GitHub's [issue system](https://github.com/raphaelvrosa/gym/issues) to get in touch.
+If you have any issues, please use GitHub's [issue system](https://github.com/intrig-unicamp/gym/issues) to get in touch.
 
 ## Mailing-list
 
