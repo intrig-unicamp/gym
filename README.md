@@ -81,6 +81,12 @@ There are 4 tests enabled by default in the run.sh file. Each one of the tests r
 For instance, to be able to run tests 1, 2 and 3, you must install:
 * Containernet: https://containernet.github.io/
 
+Besides, tests 1, 2 and 3 demand VNF images to be build. Thus:
+```bash
+$ cd gym/tests/utils
+$ sudo ./build_reqs.sh
+```
+
 Important: Tests were performed on Ubuntu 18.04.
 
 ### Test 0
