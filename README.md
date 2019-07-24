@@ -103,11 +103,39 @@ Uses the containernet platform to deploy agents and a dummy VNF, which just bypa
 
 Uses the containernet platform to deploy agents and a dummy VNF, which just bypass the traffic among its ports. The agents perform the execution of ping/iperf3 traffic through the target VNF, while its container is monitored during the test.
 
+Before running Test 2, you need to create the (SUT) VNF bypass docker image, following:
+```bash
+$ git clone https://github.com/raphaelvrosa/gym-vnfs
+$ cd gym-vnfs
+$ sudo chmod +x build.sh
+$ sudo ./build.sh
+```
+
 ### Test 3
 
 Uses the containernet platform to deploy agents and a Suricata-IDS VNF. The agents perform the execution of tcpreplay traffic through the target VNF, while its container is monitored externally and the Suricata process is monitored internally in the VNF.
 The test consists in executing different pcap files using tcpreplay  while the VNF suricata has loaded different rule sets.
 In the end all the metrics are saved into csv files into the gym/tests/csv folder, included the timeseries monitoring of the container, and the overall VNF-PP metrics according to the VNF-BD input parameters. 
+
+Before running Test 3, you need to create the (SUT) Suricata IDS docker image, following:
+```bash
+$ git clone https://github.com/raphaelvrosa/gym-vnfs
+$ cd gym-vnfs
+$ sudo chmod +x build.sh
+$ sudo ./build.sh
+```
+
+In addition, as Test 3 uses pcap files to be sent via tcpreplay by an Agent, you also need to download such pcaps:
+```bash
+$ wget https://s3.amazonaws.com/tcpreplay-pcap-files/smallFlows.pcap
+$ wget https://s3.amazonaws.com/tcpreplay-pcap-files/bigFlows.pcap
+$ sudo mkdir /mnt/pcaps/
+$ sudo mv bigFlows.pcap /mnt/pcaps/ 
+$ sudo mv smallFlows.pcap /mnt/pcaps/ 
+```
+
+After that the Agent source of stimulus will be able to mount the /mnt/pcaps/ directory and replay the pcap files for Test 3.
+Thus, now the requirements are fulfilled for Test 3 execution.
 
 # License
 
