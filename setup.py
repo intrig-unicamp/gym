@@ -18,7 +18,8 @@ setup(name='gym',
         'pandas',
         'seaborn',
         'jinja2',
-        'elasticsearch'
+        'elasticsearch',
+        'docker-py'
       ],
       include_package_data=True,
 )
