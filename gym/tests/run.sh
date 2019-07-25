@@ -126,11 +126,12 @@ case "$COMMAND" in
             ;;
         esac
 
-        sleep 2
+        sleep 4
         echo_bold "-> Deploying Layout"
 
         curl -s -X POST --header "Content-Type: application/json" -d "$(envsubst < ${SOURCE})" \
         http://172.17.0.1:8990/layout
+        echo_bold $!
         echo_bold " -> Ok"
 
         echo_bold "-> Waiting for Player Reply"
