@@ -19,3 +19,9 @@ sudo mv bigFlows.pcap /mnt/pcaps/
 
 echo "Added pcap files smallFlows.pcap and bigFlows.pcap to /mnt/pcaps/ folder"
 
+
+echo "Installing packages to run containernet"
+
+sudo apt install python-pip
+sudo pip install gevent requests Flask-RESTful flask
+
