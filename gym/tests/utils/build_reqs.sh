@@ -22,6 +22,6 @@ echo "Added pcap files smallFlows.pcap and bigFlows.pcap to /mnt/pcaps/ folder"
 
 echo "Installing packages to run containernet"
 
-sudo apt install python-pip
-sudo pip install gevent requests Flask-RESTful flask
+sudo apt install byobu python-pip
+sudo pip install psutil gevent requests Flask-RESTful flask
 
