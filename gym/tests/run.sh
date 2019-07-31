@@ -99,6 +99,7 @@ case "$COMMAND" in
         esac
 
         echo_bold "-> Start: $SCRIPT_NAME Layout Case: $SOURCE"
+        mkdir ./logs
 
         case "$TEST" in
             0)
