@@ -242,7 +242,10 @@ class Controller(Component):
 
         vnfbd_procs = vnfbd_instance.get_procedures()
         trials = vnfbd_procs.get("repeat").get("trials", 0)
+        test_id = vnfbd_instance.get_test_id()
         task.set("trials", trials)
+        task.set("test", test_id)
+        logger.debug("Trials %s", trials)
 
         agents = manager_components.get("agents", {})
         for agent_id, probers in agents.items():        
@@ -331,6 +334,7 @@ class Controller(Component):
         vnfbd_instance = VNFBD()
         vnfbd_instance.load(vnfbd.filename(), inputs=vnfbd_instance_inputs)
         vnfbd_instance.set_id(vnfbd_instance_inputs.get("id"))
+        vnfbd_instance.set_test_id(vnfbd_instance_inputs.get("test_id"))
         self.register_vnfbd_instance(vnfbd, vnfbd_instance)
         vnfbd_instance_callback = self.identity.get('url')
         outputs = self.build_deploy(vnfbd_instance, vnfbd_instance_callback, "start")
@@ -372,6 +376,7 @@ class Controller(Component):
                 vnfbd_instance = VNFBD()
                 vnfbd_instance.load(vnfbd.filename(), inputs=vnfbd_instance_inputs)
                 vnfbd_instance.set_id(vnfbd_instance_inputs.get("id"))
+                vnfbd_instance.set_test_id(vnfbd_instance_inputs.get("test_id"))
                 self.register_vnfbd_instance(vnfbd, vnfbd_instance)
                 self.build_task(vnfbd_instance)
             else:

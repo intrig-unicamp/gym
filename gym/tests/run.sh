@@ -60,11 +60,19 @@ reset() {
         rm ./vnf-br.json
     fi
 
+    shopt -s nullglob dotglob     # To include hidden files
+
     echo "Cleaning logs"
-    rm ./logs/*
+    files=(./logs/*)
+    if [ ${#files[@]} -gt 0 ]; then
+        rm ./logs/*
+    fi 
 
     echo "Cleaning csv files"
-    rm ./csv/*
+    files=(./csv/*)
+    if [ ${#files[@]} -gt 0 ]; then
+        rm ./csv/*
+    fi 
 
     mn -c
 }
@@ -99,7 +107,14 @@ case "$COMMAND" in
         esac
 
         echo_bold "-> Start: $SCRIPT_NAME Layout Case: $SOURCE"
-        mkdir ./logs
+
+        if [ ! -d "./logs" ]; then
+            mkdir ./logs
+        fi
+        
+        if [ ! -d "./csv" ]; then
+            mkdir ./csv
+        fi 
 
         case "$TEST" in
             0)

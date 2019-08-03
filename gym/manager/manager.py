@@ -166,6 +166,7 @@ class Manager(Component):
         identity = self.identity.get('uuid')
         feats = self.identity.get('features')
         host = feats.get('environment').get('host')
+        report.set('test', task.get('test'))
         report.set('host', host)
         report.set('component', identity)
         report.set('role', "manager")   

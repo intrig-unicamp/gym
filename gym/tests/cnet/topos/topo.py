@@ -32,7 +32,7 @@ logging.getLogger("docker").setLevel(logging.WARNING)
 
 
 # wait between start scripts are triggered
-TRIGGER_DELAY = 10
+TRIGGER_DELAY = 30
 
 
 class Experiment:
@@ -236,17 +236,18 @@ class Experiment:
         time.sleep(wait_time)
         LOG.info("Experiment done.")
 
-    def _new_container(self, name, ip, image, cpu_cores=None, cpu_bw=None, mem=None, volumes=None, environment=None):
+    def _new_container(self, name, ip, image, vcpus=None, cpu_cores=None, cpu_bw=None, mem=None, volumes=None, environment=None):
         """
         Helper method to create and configure a single container.
         """
-        def calculate_cpu_cfs_values(cpu_bw):
-            cpu_bw_p = 100000
+        def calculate_cpu_cfs_values(vcpus, cpu_bw):
+            vcpus = 1 if not vcpus else vcpus
+            cpu_bw_p = 100000*vcpus
             cpu_bw_q = int(cpu_bw_p*cpu_bw)
             return cpu_bw_p, cpu_bw_q
 
         # translate cpu_bw to period and quota
-        cpu_bw_p, cpu_bw_q = calculate_cpu_cfs_values(cpu_bw)
+        cpu_bw_p, cpu_bw_q = calculate_cpu_cfs_values(vcpus, cpu_bw)
         # create container
         c = self.net.addDocker(name,
            ip=ip,
@@ -398,11 +399,13 @@ class Experiment:
             req_id = req.get("id")
             req_res = req.get("resources")
             if req_id in topo["nodes"]:
-                vcpus = req_res["cpu"]["vcpus"]
+                vcpus = req_res.get("cpu").get("vcpus", None)
                 cpu_cores = req_res.get("cpu").get("cpu_cores", None)
+                cpu_bw = req_res.get("cpu").get("bw", None)
                 mem = req_res["memory"]["size"]
                 node_res = {
-                    "cpu_bw": vcpus,
+                    "vcpus": vcpus,
+                    "cpu_bw": cpu_bw,
                     "cpu_cores": cpu_cores,
                     "mem": mem,
                 }
@@ -424,6 +427,7 @@ class Experiment:
                     node_id,
                     node.get("addr_input", None),
                     node.get("image"),
+                    vcpus=node.get("vcpus", None),
                     cpu_cores=node.get("cpu_cores", None),
                     cpu_bw=node.get("cpu_bw"),
                     mem=node.get("mem"),

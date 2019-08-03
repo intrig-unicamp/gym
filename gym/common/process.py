@@ -40,6 +40,7 @@ class Loader:
                             self.loading(root, file, full_path)
                     else:
                         self.loading(root, file, full_path)
+            break
         return self._files
 
     def load_classes(self, folder, file_begin_with, class_begin_with):

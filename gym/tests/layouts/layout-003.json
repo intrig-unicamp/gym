@@ -34,8 +34,10 @@
                         }
                     },
                     "resources": {
+                        "cpu_cores": "0",
+                        "cpu_bw": 0.5,
                         "vcpus": 1,
-                        "mem_size": 2048
+                        "mem_size": 1024
                     }
                 },
                 "agent_one": {
@@ -89,6 +91,7 @@
                 },
                 "settings": {
                     "trials": 1,
+                    "tests": 1,
                     "duration":"30",
                     "interval": "1",
                     "vm_mon_interface": "input",
@@ -97,7 +100,8 @@
                         "replay_interface": "eth1",
                         "pcap": ["bigFlows.pcap", "smallFlows.pcap"],
                         "preload": "true",
-                        "speed": "true"
+                        "speed": "true",
+                        "replayloop": "1000"
                     },
                     "monitor": {
                         "mon_container_target": "mn.d2"

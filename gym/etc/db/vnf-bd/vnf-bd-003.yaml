@@ -9,7 +9,7 @@ description: "Realizes the test of two agents realizing tcpreplay on a Suricata 
 procedures:
   repeat:
     trials: {{ settings.trials }}
-    tests: 1
+    tests: {{ settings.tests }}
     methods: 1
 
 targets:
@@ -103,8 +103,9 @@ scenario:
     - id: "{{ sut.id }}"
       resources:
         cpu:
+          cpu_cores: "0"
           vcpus: {{ sut.resources.vcpus }}  # CPU cores
-          bw: {{ sut.resources.cpu_cores }}  # CPU time
+          bw: {{ sut.resources.cpu_bw }}  # CPU time
         memory:
           size: {{ sut.resources.mem_size }}
           size_unit: "MB"
@@ -114,6 +115,7 @@ scenario:
     - id: "{{ agent_one.id }}"
       resources:
         cpu:
+          cpu_cores: "1"
           vcpus: {{ agent_one_resource_cpu_cores or 1 }}  # CPU cores
           bw: {{ agent_one_resource_cpu_bw or 1.0 }}  # CPU time
         memory:
@@ -125,8 +127,9 @@ scenario:
     - id: "{{ agent_two.id }}"
       resources:
         cpu:
+          cpu_cores: "2"
           vcpus: {{ agent_two_resource_cpu_cores or 1 }}  # CPU cores
-          bw: {{ agent_two_resource_cpu_bw or '1.0' }}  # CPU time
+          bw: {{ agent_two_resource_cpu_bw or 1.0 }}  # CPU time
         memory:
           size: {{ agent_two_resource_mem or 2048 }}
           size_unit: "MB"
@@ -137,7 +140,7 @@ scenario:
       resources:
         cpu:
           vcpus: {{ manager_resource_cpu_cores or 1 }}  # CPU cores
-          bw: {{ manager_resource_cpu_bw or '1.0' }}  # CPU time
+          bw: {{ manager_resource_cpu_bw or 1.0 }}  # CPU time
         memory:
           size: {{ manager_resource_mem or 2048 }}
           size_unit: "MB"

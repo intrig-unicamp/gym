@@ -19,7 +19,8 @@ setup(name='gym',
         'seaborn',
         'jinja2',
         'elasticsearch',
-        'docker-py'
+        'docker-py',
+        'flatten_json',
       ],
       include_package_data=True,
 )

@@ -210,6 +210,7 @@ class Task(Request):
         self.agents = {}
         self.monitors = {}
         self.trials = 0
+        self.test = 0
         self.time = Time()
 
     def add_agent(self, id, probers):
@@ -305,6 +306,7 @@ class Report(Response):
         self.host = None
         self.component = None
         self.role = None
+        self.test = 0
         self.snapshots = {}
 
 

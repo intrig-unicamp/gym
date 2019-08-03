@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import copy
 import yaml
 import itertools
 from functools import reduce
@@ -247,6 +248,7 @@ class VNFBD(Content):
         self.targets = None
         self.scenario = Scenario()
         self.settings = None
+        self._test_id = 0
         self._inputs = None
         self._filename = None
         self._etc_folder = ETC_REL_PATH
@@ -267,6 +269,12 @@ class VNFBD(Content):
 
     def get_procedures(self):
         return self.procedures
+
+    def get_test_id(self):
+        return self._test_id
+
+    def set_test_id(self, test_id):
+        self._test_id = test_id
 
     def set_id(self, instance_id):
         self.id = instance_id
@@ -367,7 +375,6 @@ class VNFBD(Content):
         reduce(dict.__getitem__, path, unique_input).update(value)
 
     def fill_unique_inputs(self, inputs, list_paths, unique_lists):
-        import copy
         fill_inputs = copy.deepcopy(inputs)
         unique_inputs = []
         for unique_list in unique_lists:
@@ -427,9 +434,15 @@ class VNFBD(Content):
         mux_inputs = self.mix_inputs(inputs)
         logger.debug("Multiplexed vnfbd inputs %s", mux_inputs)
         self._input_ids = 500
+
+        tests = self.procedures.get("repeat").get("tests", 1)
+        logger.debug("Tests %s", tests)
         for _input in mux_inputs:
-            self._mux_inputs[self._input_ids] = _input
-            self._input_ids += 1
+            for test_id in range(tests):
+                _input_test = copy.deepcopy(_input)
+                _input_test["test_id"] = test_id
+                self._mux_inputs[self._input_ids] = _input_test
+                self._input_ids += 1
         self._input_ids = 500
 
     def get_current_input_id(self):

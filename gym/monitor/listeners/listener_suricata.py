@@ -6,6 +6,7 @@ import math
 import yaml
 import sys
 import json 
+import flatten_json
 
 from gym.monitor.listeners.listener import Listener
 from gym.common.defs.tools import LISTENER_SURICATA
@@ -224,9 +225,23 @@ class SuricataStats:
                 "suricata_packets": eve_summ.get("stats").get("decoder").get("pkts"),
                 "suricata_bytes": eve_summ.get("stats").get("decoder").get("bytes"),
                 "suricata_invalid": eve_summ.get("stats").get("decoder").get("invalid"),
-                "suricata_dropped": eve_summ.get("stats").get("capture").get("kernel_drops"),
+                "suricata_drops": eve_summ.get("stats").get("capture").get("kernel_drops"),
             }
         return eve_log
+
+    def monitor_suricata_logs(self):
+        METRIC_PREFIX = "suricata_eve_"
+
+        data = dict()
+        try:
+            # efficiently get and parse last line from EVE_FILE
+            line = check_output(['tail', '-1', self.EVE_LOG])
+            data = json.loads(line.decode("utf-8"))
+        except BaseException as ex:
+            print(ex)
+        data_flat = flatten_json.flatten(data)
+        data_flat = {METRIC_PREFIX + k: v for k, v in data_flat.items()}
+        return data_flat
 
     def status(self):
         suri_stats = self.suri_status()
@@ -237,7 +252,8 @@ class SuricataStats:
     def final_status(self):
         eve_stats = {}
         try:
-            eve_stats = self.eve_status()
+            # eve_stats = self.eve_status()
+            eve_stats = self.monitor_suricata_logs()
         except Exception:
             pass
         finally:
@@ -324,11 +340,13 @@ class ListenerSuricata(Listener):
             interface = opts['interface']
 
         if duration and interface:
-            try:
-                stats_diff = self.stats_diff(interface, duration)
-            except Exception:
-                stats_diff = {}
-                        
+            # try:
+            #     stats_diff = self.stats_diff(interface, duration)
+            # except Exception:
+            #     stats_diff = {}
+
+            stats_diff = {}
+            time.sleep(duration+2)                        
             eve_status = self._suricata_stats.final_status()
             stats_diff.update(eve_status)
             
