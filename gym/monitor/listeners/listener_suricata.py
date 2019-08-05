@@ -113,8 +113,6 @@ class SuricataStats:
         os.system("sync")
         os.system("sync")
 
-        # print "Started result processing ..."
-
         source = open(self.STATS_LOG, "r")
         lines = source.read().splitlines()
         source.close()
@@ -194,7 +192,42 @@ class SuricataStats:
 
         result = dict()
         result["packets"] = p
-        result["bytes"] = b
+        result["bytes"] = b        
+        flag = 0
+        for index in range(len(lines)):
+            line = lines[index].split()
+
+            if line[0] == "Date:":
+                raw_times = self.get_seconds(line[3])
+                flag += 1
+            if line[0] == "capture.kernel_packets":
+                raw_frames = int(line[4]) * 1.0
+                flag += 1
+            elif line[0] == "capture.kernel_drops":
+                raw_drops = int(line[4]) * 1.0
+                flag += 1
+            elif line[0] == "decoder.pkts":
+                raw_packets = int(line[4]) * 1.0
+                flag += 1
+            elif line[0] == "decoder.bytes":
+                raw_bytes = int(line[4]) * 1.0
+                flag += 1
+
+            if flag == 5:
+                raw_times_inc.append(raw_times)
+                raw_frames_inc.append(raw_frames)
+                raw_drops_inc.append(raw_drops)
+                raw_packets_inc.append(raw_packets)
+                raw_bytes_inc.append(raw_bytes)
+
+                raw_times = 0.0
+                raw_frames = 0.0
+                raw_drops = 0.0
+                raw_packets = 0.0
+                raw_bytes = 0.0
+
+                flag = 0
+
         result["dropped"] = d
         result["drops"] = d/f if f != 0.0 else 0.0
         
@@ -204,7 +237,6 @@ class SuricataStats:
         r = dict()
         intf_list = os.listdir(self.NET_PATH)
         for intf_name in intf_list:
-            # print "----" + intf_name
             stat_files = os.listdir(os.path.join(self.NET_PATH, intf_name, "statistics"))
             for fn in stat_files:
                 with open(os.path.join(self.NET_PATH, intf_name, "statistics", fn), "r") as f:
@@ -237,11 +269,12 @@ class SuricataStats:
             # efficiently get and parse last line from EVE_FILE
             line = check_output(['tail', '-1', self.EVE_LOG])
             data = json.loads(line.decode("utf-8"))
-        except BaseException as ex:
-            print(ex)
-        data_flat = flatten_json.flatten(data)
-        data_flat = {METRIC_PREFIX + k: v for k, v in data_flat.items()}
-        return data_flat
+        except Exception:
+            pass
+        finally:
+            data_flat = flatten_json.flatten(data)
+            data_flat = {METRIC_PREFIX + k: v for k, v in data_flat.items()}
+            return data_flat
 
     def status(self):
         suri_stats = self.suri_status()
@@ -253,11 +286,14 @@ class SuricataStats:
         eve_stats = {}
         try:
             # eve_stats = self.eve_status()
+            suri_stats = self.suri_status()
             eve_stats = self.monitor_suricata_logs()
+            eve_stats.update(suri_stats)
         except Exception:
             pass
         finally:
             return eve_stats
+
 
 class ListenerSuricata(Listener):
     PARAMETERS = {

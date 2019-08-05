@@ -297,6 +297,7 @@ class Snapshot(Response):
         self.host = None
         self.component = None
         self.role = None
+        self.trial = 0
         self.evaluations = {}
 
 

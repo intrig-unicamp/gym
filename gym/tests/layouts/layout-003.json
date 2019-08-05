@@ -35,7 +35,7 @@
                     },
                     "resources": {
                         "cpu_cores": "0",
-                        "cpu_bw": 0.5,
+                        "cpu_bw": 1.0,
                         "vcpus": 1,
                         "mem_size": 1024
                     }
@@ -90,15 +90,15 @@
                     "volumes": ""
                 },
                 "settings": {
-                    "trials": 1,
-                    "tests": 1,
+                    "trials": 2,
+                    "tests": 2,
                     "duration":"30",
                     "interval": "1",
                     "vm_mon_interface": "input",
                     "agent_one": {
                         "replay_instances": "0",
                         "replay_interface": "eth1",
-                        "pcap": ["bigFlows.pcap", "smallFlows.pcap"],
+                        "pcap": ["smallFlows.pcap", "bigFlows.pcap"],
                         "preload": "true",
                         "speed": "true",
                         "replayloop": "1000"

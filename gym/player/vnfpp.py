@@ -171,7 +171,7 @@ class VNFPP(Content):
         for report_id,report in self._reports.items(): 
             snapshots = report.get('snapshots')
             snaps = list(map(self._process_snapshot, snapshots))
-            keywords = ['id', 'role', 'host', 'component', 'timestamp']
+            keywords = ['id', 'role', 'host', 'test', 'component', 'timestamp']
             profile = self._retrieve_dict(report, keywords)
             profile['snapshots'] = snaps
             vnfbd = self._vnfbd_instances.get(report_id)
@@ -242,7 +242,7 @@ class VNFPP(Content):
 
     def _process_snapshot(self, snapshot):
         logger.info("_process_snapshot")
-        keywords = ['id', 'role', 'host', 'component', 'timestamp']
+        keywords = ['id', 'role', 'host', 'trial', 'component', 'timestamp']
         evaluations = snapshot.get('evaluations')
         evals = list(map(self._process_evaluation, evaluations))
         snap = self._retrieve_dict(snapshot, keywords)

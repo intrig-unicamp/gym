@@ -153,8 +153,13 @@ class Manager(Component):
 
     def _process_snapshots(self, snaps):
         merge_snaps = []
+        trial_id = 0
         for snap_pack in snaps:
+            for snap in snap_pack:
+                snap.set('trial', trial_id)
+            
             merge_snaps.extend(snap_pack)
+            trial_id += 1
         return merge_snaps
 
     def report(self, task, snaps):
