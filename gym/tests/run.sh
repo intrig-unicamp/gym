@@ -83,7 +83,7 @@ case "$COMMAND" in
 
         if [ -z "$TEST" ]
         then 
-            echo_bold "Please, define test case: [ 0 | 1 | 2 | 3 ]"
+            echo_bold "Please, define test case: [ 0 | 1 | 2 | 3 | 4 ]"
             exit 1
         fi
 
@@ -99,6 +99,9 @@ case "$COMMAND" in
             ;;
             3)
                 SOURCE="./layouts/layout-003.json"
+            ;;
+            4)
+                SOURCE="./layouts/layout-004.json"
             ;;
             *)
                 echo_bold "Test case does not exist - options: [ 0 | 1 | 2 | 3 ]"
@@ -181,7 +184,7 @@ case "$COMMAND" in
         ;;
 
     *)
-        echo_bold "Usage: $0 [ start | stop ] [ 0 | 1 | 2 | 3 ]"
+        echo_bold "Usage: $0 [ start | stop ] [ 0 | 1 | 2 | 3 | 4 ]"
         echo_bold "=> Start - Run a test case specified."
         echo_bold "=> Stop - Clean logs/results and operations performed by test case"
         echo_bold "# Test Cases:"
@@ -189,6 +192,7 @@ case "$COMMAND" in
         echo_bold " - 1: Uses containernet to run two agents exchanging iperf3/ping traffic via a dummy VNF"
         echo_bold " - 2: Uses containernet to run three agents exchanging iperf3/ping traffic via a dummy VNF, while monitoring it"
         echo_bold " - 3: Uses containernet to run two agents realizing tcpreplay traffic via a Suricata VNF, while monitoring it (externally and internally)"
+	    echo_bold " - 4: Same as Test 3 - Added simpler layout/vnfbd files and Test/Trial repetitions"
 
         exit 1
 esac

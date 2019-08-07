@@ -482,22 +482,22 @@ class Experiment:
         node_ip = self.get_host_ip()
         fmt_kwargs = {'host_id': node_id, 'host_ip': node_ip}
         cmd_entrypoint = entrypoint.format(**fmt_kwargs)
-        LOG.info("New process: node_id %s - process args %s", node_id, cmd_entrypoint)
+        LOG.info("Creating new process: node_id %s - process args %s", node_id, cmd_entrypoint)
         try:
             # p = Process(target=self.process_args, args=(cmd_entrypoint,))
             # p.daemon = True
             # p.start()
             args = cmd_entrypoint.split(" ")
             p = subprocess.Popen(args,
-                # stdin = subprocess.PIPE,
-                # stdout = subprocess.PIPE,
-                # stderr = subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 )            
         except OSError as e:
             LOG.info('ERROR: process could not be started %s', e)
         else:
             # LOG.info('node_id %s - cmd %s - pid %s - alive %s', node_id, cmd_entrypoint, p.pid, p.is_alive())
-            LOG.info('node_id %s - cmd %s - pid %s', node_id, cmd_entrypoint, p.pid)
+            LOG.info('Process started: node_id %s - cmd %s - pid %s', node_id, cmd_entrypoint, p.pid)
         finally:    
             return p
 
