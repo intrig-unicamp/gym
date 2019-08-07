@@ -1,0 +1,179 @@
+descriptor_version: 0.01
+id: "004"
+name: "vnf-bd-004"
+version: "0.1"
+author: "Raphael Vicente Rosa"
+description: "Realizes the test of two agents realizing tcpreplay on a Suricata VNF, while monitoring it internally/externally"
+
+
+procedures:
+  repeat:
+    trials: {{ settings.trials or 1 }}
+    tests: {{ settings.tests or 1 }}
+    methods: 1
+
+targets:
+  - id: "d2"
+    name: "suricata"
+    version: "0.1"
+    author: null
+    vendor: null
+    description: null
+
+scenario:
+  orchestration: 
+    deploy: true
+    plugin: "containernet"
+    entrypoint: "http://127.0.0.1:7878/001/"
+  topology:
+    nodes:
+      - id: "d2"
+        type: "sut"
+        image:  "vnf/suricata:0.1"
+        image_format: "docker"
+        entrypoint: "{{ sut.entrypoint }}"
+        connection_points:
+          - id: "input"
+            type: "internal"
+            address: "172.31.1.2/24"
+          - id: "output"
+            type: "internal"
+            address: "172.31.1.3/24"
+      - id: "d1"
+        image: "raphaelvrosa/gym:0.1"
+        image_format: "docker"
+        type: "agent"
+        entrypoint: "gym-agent --id {host_id} --url http://{host_ip}:8988 > gym-agent.log 2>&1 &"
+        volumes: "/mnt/pcaps/:/mnt/pcaps:rw"
+        connection_points:
+          - id: "eth1"
+            interface: "ipv4"
+            type: "internal"
+            address: "172.31.1.1/24"
+      - id: "d3"
+        image:  "raphaelvrosa/gym:0.1"
+        image_format: "docker"
+        type: "agent"
+        entrypoint: "gym-agent --id {host_id} --url http://{host_ip}:8988 > gym-agent.log 2>&1 &"
+        connection_points:
+          - id: "eth1"
+            interface: "ipv4"
+            type: "internal"
+            address: "172.31.1.4/24"
+      - id: "d6"
+        image: "raphaelvrosa/gym:0.1"
+        image_format: "docker"
+        type: "manager"
+        entrypoint: "gym-manager --id {host_id} --url http://{host_ip}:8989 > gym-mngr.log 2>&1 &"
+        connection_points: null
+      - id:  "d4"
+        image:  null
+        image_format: "process"
+        type: "monitor"
+        entrypoint: "gym-monitor --id {host_id} --url http://{host_ip}:8987  > gym-mon.log 2>&1 &"
+        connection_points: null
+        habitat:
+          setting: "process"
+          location: "external"
+          target: "d2"
+      - id: "d5"
+        image:  null
+        image_format: "process"
+        type: "monitor"
+        entrypoint: "gym-monitor --id {host_id} --url http://{host_ip}:8987 > gym-mon.log 2>&1 &"
+        connection_points: null
+        habitat:
+          setting: "process"
+          location: "internal"
+          target: "d2"
+    links:
+      - id: "d1-d2"
+        type: "E-Flow"
+        network: "s1"
+        connection_points:
+          - "d1:eth1"
+          - "d2:input"
+      - id: "d2-d3"
+        type: "E-Flow"
+        network: "s2"
+        connection_points:
+          - "d2:output"
+          - "d3:eth1"
+  requirements:
+    - id: "d2"
+      resources:
+        cpu:
+          cpu_cores: "0"
+          vcpus: 1
+          bw: {{ sut.resources.cpu_bw }}  # CPU time
+        memory:
+          size: {{ sut.resources.mem_size or 1024 }}
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"
+    - id: "d1"
+      resources:
+        cpu:
+          cpu_cores: "1"
+          vcpus: 1
+          bw: 1.0
+        memory:
+          size: 2048
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"
+    - id: "d3"
+      resources:
+        cpu:
+          cpu_cores: "2"
+          vcpus: 1
+          bw: 1.0
+        memory:
+          size: 2048
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"
+    - id: "d6"
+      resources:
+        cpu:
+          vcpus: 1
+          bw: 1.0
+        memory:
+          size: 2048
+          size_unit: "MB"
+        storage:
+          size: 2
+          size_unit: "GB"        
+settings:
+  vnfs:
+    - id: "d2"
+  agents:
+    - id: "d1"
+      probers:
+        - id: 6
+          instances: {{ settings.agent_one.replay_instances }}
+          parameters:
+            interface: {{ settings.agent_one.replay_interface }}
+            duration: {{ settings.duration }}
+            speed: {{ settings.agent_one.speed }}
+            timing: {{ settings.agent_one.timing }}
+            preload: {{ settings.agent_one.preload }}
+            loop: {{ settings.agent_one.replayloop }}
+            pcap: {{ settings.agent_one.pcap }}
+  monitors:
+    - id: "d4"
+      listeners:
+        - id: 17
+          parameters:
+            target: {{ settings.monitor.mon_container_target }}
+            duration: {{ settings.duration }}
+            interval: {{ settings.interval }}
+    - id: "d5"
+      listeners:
+        - id: 20
+          parameters:
+            duration: {{ settings.duration }}
+            interface: {{ settings.vm_mon_interface }}

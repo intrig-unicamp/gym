@@ -1,0 +1,46 @@
+{
+    "id": "004",
+    "method": "layout",
+    "params": {
+        "callback": "http://127.0.0.1:7879/001",
+        "vnf_bd": {
+            "id": "004",
+            "inputs": {
+                "sut": {
+                    "entrypoint": ["./start.sh big_ruleset", "./start.sh small_ruleset", "./start.sh empty"],
+                    "resources": {
+                        "cpu_cores": "0",
+                        "cpu_bw": [1.0],
+                        "vcpus": 1,
+                        "mem_size": 1024
+                    }
+                },
+                "settings": {
+                    "trials": 2,
+                    "tests": 2,
+                    "duration":"30",
+                    "interval": "1",
+                    "vm_mon_interface": "input",
+                    "agent_one": {
+                        "replay_instances": "0",
+                        "replay_interface": "eth1",
+                        "pcap": ["smallFlows.pcap", "bigFlows.pcap"],
+                        "preload": "true",
+                        "speed": "true",
+                        "replayloop": "1000"
+                    },
+                    "monitor": {
+                        "mon_container_target": "mn.d2"
+                    }
+                }                
+            }
+        },
+        "time": {
+            "duration": null,
+            "every": 0,
+            "repeat": 0,
+            "timestamp": "Tue, 28 Feb 2017 12:18:05",
+            "when": null
+        }
+    }
+}

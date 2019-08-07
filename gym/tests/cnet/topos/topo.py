@@ -46,9 +46,8 @@ class Experiment:
         self.containers = []
         self.switch_links = {}
         self.config_sw_links = {}
-        # give status
         # LOG.info("Switch mode: %s" % str(self.switch_mode))
-        LOG.debug("Scenario: %r" % self.scenario)
+        LOG.debug("Scenario Built")
         self.topo_parsed = {}
 
     def __repr__(self):

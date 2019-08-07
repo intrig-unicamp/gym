@@ -6,14 +6,13 @@ import math
 import yaml
 import sys
 import json 
+import time
 import flatten_json
+from datetime import datetime
+from subprocess import check_output
 
 from gym.monitor.listeners.listener import Listener
 from gym.common.defs.tools import LISTENER_SURICATA
-
-import time
-from datetime import datetime
-from subprocess import check_output
 
 
 class SuricataStats:
@@ -178,11 +177,13 @@ class SuricataStats:
         delete = 0
         for index in range(len(frames_diff)):
             if delete > 2 and frames_diff[index] > 0:
-                frames_end.append(frames_diff[index] / time_diff[index])
-                drops_end.append(drops_diff[index] / time_diff[index])
-                packets_end.append(packets_diff[index] / time_diff[index])
-                bytes_end.append(bytes_diff[index] / time_diff[index])
-
+                try:
+                    frames_end.append(frames_diff[index] / time_diff[index])
+                    drops_end.append(drops_diff[index] / time_diff[index])
+                    packets_end.append(packets_diff[index] / time_diff[index])
+                    bytes_end.append(bytes_diff[index] / time_diff[index])
+                except BaseException:
+                    pass
             delete += 1
 
         f = self.get_median_filtered(frames_end)
@@ -190,48 +191,17 @@ class SuricataStats:
         p = self.get_median_filtered(packets_end)
         b = self.get_median_filtered(bytes_end)
 
+        if f == 0.0:
+            p, b, d = 0.0, 0.0, 0.0
+        
         result = dict()
         result["packets"] = p
-        result["bytes"] = b        
-        flag = 0
-        for index in range(len(lines)):
-            line = lines[index].split()
-
-            if line[0] == "Date:":
-                raw_times = self.get_seconds(line[3])
-                flag += 1
-            if line[0] == "capture.kernel_packets":
-                raw_frames = int(line[4]) * 1.0
-                flag += 1
-            elif line[0] == "capture.kernel_drops":
-                raw_drops = int(line[4]) * 1.0
-                flag += 1
-            elif line[0] == "decoder.pkts":
-                raw_packets = int(line[4]) * 1.0
-                flag += 1
-            elif line[0] == "decoder.bytes":
-                raw_bytes = int(line[4]) * 1.0
-                flag += 1
-
-            if flag == 5:
-                raw_times_inc.append(raw_times)
-                raw_frames_inc.append(raw_frames)
-                raw_drops_inc.append(raw_drops)
-                raw_packets_inc.append(raw_packets)
-                raw_bytes_inc.append(raw_bytes)
-
-                raw_times = 0.0
-                raw_frames = 0.0
-                raw_drops = 0.0
-                raw_packets = 0.0
-                raw_bytes = 0.0
-
-                flag = 0
-
+        result["bytes"] = b
         result["dropped"] = d
         result["drops"] = d/f if f != 0.0 else 0.0
         
         return result
+
 
     def collect_intf_statistics(self):
         r = dict()
@@ -249,19 +219,6 @@ class SuricataStats:
         return r
 
     def eve_status(self):
-        eve_log = {}
-        with open(self.EVE_LOG, "r") as fp:
-            data = fp.readlines()
-            eve_summ = json.loads(data[-1])
-            eve_log = {
-                "suricata_packets": eve_summ.get("stats").get("decoder").get("pkts"),
-                "suricata_bytes": eve_summ.get("stats").get("decoder").get("bytes"),
-                "suricata_invalid": eve_summ.get("stats").get("decoder").get("invalid"),
-                "suricata_drops": eve_summ.get("stats").get("capture").get("kernel_drops"),
-            }
-        return eve_log
-
-    def monitor_suricata_logs(self):
         METRIC_PREFIX = "suricata_eve_"
 
         data = dict()
@@ -285,9 +242,8 @@ class SuricataStats:
     def final_status(self):
         eve_stats = {}
         try:
-            # eve_stats = self.eve_status()
             suri_stats = self.suri_status()
-            eve_stats = self.monitor_suricata_logs()
+            eve_stats = self.eve_status()
             eve_stats.update(suri_stats)
         except Exception:
             pass
@@ -382,7 +338,7 @@ class ListenerSuricata(Listener):
             #     stats_diff = {}
 
             stats_diff = {}
-            time.sleep(duration+2)                        
+            time.sleep(duration+1)                        
             eve_status = self._suricata_stats.final_status()
             stats_diff.update(eve_status)
             

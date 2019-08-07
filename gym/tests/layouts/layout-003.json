@@ -90,8 +90,8 @@
                     "volumes": ""
                 },
                 "settings": {
-                    "trials": 2,
-                    "tests": 2,
+                    "trials": 1,
+                    "tests": 1,
                     "duration":"30",
                     "interval": "1",
                     "vm_mon_interface": "input",

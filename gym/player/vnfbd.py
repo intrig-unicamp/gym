@@ -482,4 +482,3 @@ class VNFBD(Content):
         scenario_deployment = self.scenario.get_deployment()
         scenaro_entrypoint = self.scenario.get_entrypoint()
         return scenaro_entrypoint, scenario_deployment
-
