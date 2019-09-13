@@ -35,16 +35,24 @@ class Agent(Component):
         }
         self.actuator.cfg(cfg)
 
+    def origin(self):
+        feats = self.identity.get('features')
+        host = feats.get('environment').get('host')
+        identity = self.identity.get('uuid')
+        
+        org = {
+            "id": identity,
+            "host": host,
+            "role": "agent",
+        }
+        return org
+
     def snapshot(self, _id, evals):
         logger.info('Snapshot')
         snapshot = Snapshot(id=_id)
+        origin = self.origin()
+        snapshot.set('origin', origin)
         snapshot.set('evaluations', evals)
-        feats = self.identity.get('features')
-        host = feats.get('environment').get('host')
-        identity = self.identity.get('identity')
-        snapshot.set('host', host)
-        snapshot.set('component', identity)
-        snapshot.set('role', 'agent')
         logger.debug(snapshot.to_json())
         return snapshot
 
@@ -54,11 +62,11 @@ class Agent(Component):
         for eval_id,(ack,runner_id,out) in evals.items():
             evaluation = Evaluation(id=eval_id)
             if ack:
-                evaluation.set('type', 'prober')
-                evaluation.set('tool', runner_id)
-                evaluation.set('metrics', out)
-                if type(out) is list:
-                    evaluation.set('series', True)
+                evaluation.set('source', out.get("source", None))
+                evaluation.set('timestamp', out.get("timestamp", None))
+                evaluation.set('metrics', out.get("metrics", None))
+                # if type(out) is list:
+                #     evaluation.set('series', True)
             else:
                 error = Error(data=out)
                 evaluation.set('error', error)

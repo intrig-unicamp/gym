@@ -49,14 +49,14 @@ class ListenerProcess(Listener):
         cpu_stats["cpu_num"] = self._p.cpu_num()
 
         # cpu_affinity
-        affinity = self._p.cpu_affinity()
+        # affinity = self._p.cpu_affinity()
 
-        cpu_stats["cpu_affinity"] = ""
-        for index in range(len(affinity)):
-            if cpu_stats["cpu_affinity"] == "":
-                cpu_stats["cpu_affinity"] = str(affinity[index])
-            else:
-                cpu_stats["cpu_affinity"] = cpu_stats["cpu_affinity"] + "," + str(affinity[index])
+        # cpu_stats["cpu_affinity"] = ""
+        # for index in range(len(affinity)):
+        #     if cpu_stats["cpu_affinity"] == "":
+        #         cpu_stats["cpu_affinity"] = str(affinity[index])
+        #     else:
+        #         cpu_stats["cpu_affinity"] = cpu_stats["cpu_affinity"] + "," + str(affinity[index])
 
         # cpu_percent
         cpu_stats["cpu_percent"] = self._p.cpu_percent(interval=0.5)
@@ -198,15 +198,15 @@ class ListenerProcess(Listener):
             return results
         if not ps.pid_exists(pid):
             return results
-
+        
         self._p = ps.Process(pid)
-        stats = self._get_process_info()
+        # stats = self._get_process_info()
         measurement = {}
         measurement["time"] = 0.0
         past = datetime.now()
         while True:
             current = datetime.now()
-            _time = {'timestamp': current.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
+            
             seconds = (current-past).total_seconds()
             if seconds > t:
                 break
@@ -214,30 +214,44 @@ class ListenerProcess(Listener):
                 tm = time.time()
                 measurement = self._get_process_stats(tm, measurement)
                 measurement["time"] = tm
-                measurement.update(stats)
                 self._first = False
-                current = datetime.now()
-                _time = {'timestamp': current.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
-                measurement.update(_time)
                 results.append(measurement)
                 time.sleep(interval)
         return results
 
     def parser(self, out):
-        return out
+        metrics = []
+
+        if out:
+            metric_names = list(out[0].keys())
+            for name in metric_names:
+                metric_values = [ float(out_value.get(name)) for out_value in out ]
+
+                m = {
+                    "name": name,
+                    "series": True,
+                    "type": "float",
+                    "unit": "",
+                    "value": metric_values,
+                }
+
+                metrics.append(m)
+        
+        return metrics
 
 
 if __name__ == '__main__':
-    opts = {
-        'interval':1,
-        'duration':2,
-        'target':9371,
-    }
+    # opts = {
+    #     'interval':1,
+    #     'duration':5,
+    #     'pid':5900,
+    # }
 
     # process_listener = ListenerProcess()
     # measures = process_listener.monitor(opts)
-    # for v in measures:
-    #     print v
+    # metrics = process_listener.parser(measures)
+    # for v in metrics:
+    #     print(v)
 
     app = ListenerProcess()
     print(app.main())

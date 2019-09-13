@@ -8,6 +8,13 @@ from flask_restful import Api, Resource
 from gevent.pywsgi import WSGIServer
 from gevent.queue import Empty, Queue
 
+import signal
+from time import sleep
+import subprocess
+from multiprocessing import Process
+from multiprocessing import Queue as MQueue
+
+
 from topos.topo import Experiment
 
 
@@ -159,17 +166,47 @@ class WebClient():
 
 
 class Playground:
-    def __init__(self):
+    def __init__(self, in_queue, out_queue):
         self.exp_topo = None
         self.running = False
-        self.clear()
+        self.in_queue = in_queue
+        self.out_queue = out_queue
+        self.init()
 
-    def start(self, run_id, msg):
+    def init(self):
+        # self.clear()
+        self.mon_queue(self.in_queue)
+
+    def mon_queue(self, q):
+        logger.info("mon_queue started")
+        while True:
+            try:
+                msg = q.get_nowait()
+            except:
+                sleep(1)
+            else:
+                cmd = msg.get("cmd")
+                params = msg.get("params")
+                
+                logger.info("input - play - cmd %s", cmd)
+
+                if cmd == "start":
+                    reply = self.start(params)
+                elif cmd == "stop":
+                    reply = self.stop()
+                else:
+                    reply = {"msg": ""}
+
+                self.out_queue.put(reply)
+
+                if cmd == "stop":
+                    break
+
+    def start(self, msg):
         scenario = msg.get("scenario")
         instance = msg.get("instance")
         logger.info("received scenario %s", scenario)
         self.exp_topo = Experiment(instance, scenario)
-        self.exp_topo.build()
         hosts_info = self.exp_topo.start()
         self.running = True
         logger.info("expo_topo running %s", self.running)
@@ -177,7 +214,7 @@ class Playground:
         ack = {
             'running': self.running,
             'instance': instance,
-            'deploy': hosts_info, 
+            'info': hosts_info, 
         }
         return ack
 
@@ -186,6 +223,7 @@ class Playground:
         self.running = False
         logger.info("expo_topo running %s", self.running)
         ack = {'running': self.running}
+        self.exp_topo = None
         return ack
 
     def alive(self):
@@ -205,7 +243,11 @@ class Scenario:
             'delete': self.delete_handler,
         }
         self.server = WebServer(url, self.handlers)
-        self.playground = Playground()
+        # self.playground = Playground()
+        self.playing = None
+        self.running_playground = False
+        self.in_queue = MQueue()
+        self.out_queue = MQueue()
         self._ids = 0
         self.in_q = Queue()
         self.client = WebClient()
@@ -227,6 +269,35 @@ class Scenario:
         self.in_q.put(data)
         return True, 'Ack'
         
+    def init(self):
+        Playground(self.in_queue, self.out_queue)
+        self.running_playground = False
+        print("Finished Playground")
+
+    def play(self):
+        self.in_queue = MQueue()
+        self.out_queue = MQueue()
+        self.playing = Process(target=self.init)
+        self.playing.start()
+        self.running_playground = True
+
+    def call(self, cmd, params):
+        logger.info("cmd %s call", cmd)
+        msg = {"cmd": cmd, "params": params}
+        self.in_queue.put(msg)
+        reply = self.out_queue.get()
+        return reply
+
+    def check_playground(self):
+        self.playing.terminate()
+        sleep(0.1)
+        logger.info("playground alive %s", self.playing.is_alive())        
+        logger.info("playground exitcode ok %s", self.playing.exitcode == -signal.SIGTERM)        
+        self.running_playground = False
+        self.playing = None
+        self.in_queue = None
+        self.out_queue = None
+
     def handle(self, msg):
         msg_id = msg.get("id")
         data = msg.get("params")
@@ -240,19 +311,28 @@ class Scenario:
         built["response"] = "built"
         built["to"] = callback + "/" + prefix
         result = {}
-        logger.info("received msg: request %s, continuous %s, callback %s")
+        logger.info("received msg: request %s, continuous %s, callback %s", cmd, continuous, callback)
         if continuous:
-            if self.playground.alive():
-                self.playground.stop()
+            if self.running_playground:
+                stop_info = self.call("stop", None)
+                self.check_playground()
+
         if cmd == "start":
-            start_info = self.playground.start(self._ids, data)
+            if self.running_playground:
+                stop_info = self.call("stop", None)
+                self.check_playground()
+
+            self.play()
+            start_info = self.call("start", data)
             result["ack"] = start_info
             self._ids += 1
             built["result"] = result
             outputs.append(built)
+
         elif cmd == "stop":
-            if self.playground.alive():
-                stop_info = self.playground.stop()
+            if self.running_playground:
+                stop_info = self.call("stop", None)
+                self.check_playground()
                 result["ack"] = stop_info
                 built["result"] = result
                 outputs.append(built)

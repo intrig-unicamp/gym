@@ -78,13 +78,14 @@ class Processor:
                     return_code = -1
                     err = 'ERROR: Process not defined'
             else:
+                logger.debug('process communicate %s', p.pid)
                 out, err = p.communicate()
                 return_code = p.returncode
         except OSError:
             return_code = -1
             err = 'ERROR: exception OSError'
         finally:
-            logger.debug('process stopped')
+            logger.debug('process finished %s', p.pid)
             if return_code != 0:
                 queue_answer = err
                 logger.error(err)
@@ -98,6 +99,7 @@ class Processor:
             return return_code
 
     def stop_process(self, timeout):
+        logger.debug('stopping process %s after %s', self.process.pid, timeout)
         if self.process:
             time.sleep(timeout)
             self.process.kill()

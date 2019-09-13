@@ -142,15 +142,6 @@ class Manager(Component):
             self.sched_mapping(msg, outputs)
         self.exit(outputs)
 
-    def _process_evaluation(self, evaluation):
-        return evaluation
-
-    def _process_snapshot(self, snap):
-        # evaluations = snap.get('evaluations')
-        # evals = map(self._process_evaluation, evaluations)
-        # snap.set('evaluations', evals)
-        return list(snap)
-
     def _process_snapshots(self, snaps):
         merge_snaps = []
         trial_id = 0
@@ -165,16 +156,9 @@ class Manager(Component):
     def report(self, task, snaps):
         logger.info('Report')
         report = Report(id=task.get('id'))
-        # _snaps = list(map(self._process_snapshot, snaps))
         _snaps = self._process_snapshots(snaps)
         report.set('snapshots', _snaps)
-        identity = self.identity.get('uuid')
-        feats = self.identity.get('features')
-        host = feats.get('environment').get('host')
         report.set('test', task.get('test'))
-        report.set('host', host)
-        report.set('component', identity)
-        report.set('role', "manager")   
         logger.debug(report.to_json())  
         return report
 

@@ -182,43 +182,55 @@ class ListenerHost(Listener):
             return results
 
         past = datetime.now()
-        node_info = self._get_node_info()
+        # node_info = self._get_node_info()
         measurement = {}
         measurement["time"] = 0.0
         while True:
             current = datetime.now()
-            _time = {'timestamp': current.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
             seconds = (current-past).total_seconds()
             if seconds > t:
                 break
             else:
                 tm = time.time()
                 measurement = self._get_node_stats(tm, measurement)
-                measurement.update(node_info)
-                measurement["time"] = tm
                 current = datetime.now()
                 self._first = False
-                # result = {str(current): measurement}
-                _time = {'timestamp': current.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
-                measurement.update(_time)
                 results.append(measurement)
                 time.sleep(interval)
         return results
 
     def parser(self, out):
-        return out
+        metrics = []
+
+        if out:
+            metric_names = list(out[0].keys())
+            for name in metric_names:
+                metric_values = [ float(out_value.get(name)) for out_value in out ]
+
+                m = {
+                    "name": name,
+                    "series": True,
+                    "type": "float",
+                    "unit": "",
+                    "value": metric_values,
+                }
+
+                metrics.append(m)
+        
+        return metrics
 
 
 if __name__ == '__main__':
-    opts = {
-        'interval':1,
-        'duration':20,
-    }
+    # opts = {
+    #     'interval':1,
+    #     'duration':5,
+    # }
 
     # host_listener = ListenerHost()
     # measures = host_listener.monitor(opts)
-    # for v in measures:
-    #     print v
+    # metrics = host_listener.parser(measures)
+    # for v in metrics:
+    #     print(v)
 
     app = ListenerHost()
     print(app.main())

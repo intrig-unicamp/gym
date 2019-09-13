@@ -3,6 +3,7 @@ import json
 import argparse
 import subprocess
 import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,10 @@ class Listener:
         self.name = name
         self.parameters = parameters
         self.metrics = metrics
+        self._type = "listener"
+        self._call = ""
+        self._tstart = None
+        self._tstop = None
         self._output = {}
         self._command = None
         self._default_params = Listener.PARAMS
@@ -127,6 +132,22 @@ class Listener:
             opts.append(options['target'])
         return opts, stop, timeout
 
+    def source(self):
+        source = {
+            "id": self.id,
+            "type": self._type,
+            "name": self.name,
+            "call": self._call,
+        }
+        return source
+
+    def timestamp(self):
+        ts = {
+            "start": self._tstart,
+            "stop": self._tstop,
+        }
+        return ts
+
     def parser(self, out):
         raise NotImplementedError
 
@@ -141,21 +162,33 @@ class Listener:
 
         if self._command:
             cmd.extend(opts)
+            self._tstart = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
             ret, out, err = self._processor.start_process(cmd, stop, timeout)
+            self._tstop = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
         else:
             ret = 0
             err = None
+            self._tstart = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
             out = self.monitor(opts)
+            self._tstop = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
         if ret == 0:
             logger.info("process executed %s", ret)
-            self._output = self.parser(out)
+            metrics = self.parser(out)
         elif stop and ret == -9:
             logger.info("process executed and stopped %s", ret)
-            self._output = self.parser(out)
+            metrics = self.parser(out)
         else:
             logger.info("process error %s, %s", out, err)
-            self._output = {"error": err}
+            metrics = {"error": err}
+
+        self._output = {
+            "metrics": metrics, 
+            "timestamp": self.timestamp(),
+            "source": self.source(),
+        }
+
         
     def monitor(self, opts):
         return {}

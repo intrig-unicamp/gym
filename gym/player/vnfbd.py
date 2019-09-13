@@ -30,15 +30,15 @@ class TemplateParser:
         inputs = inputs if inputs else {}        
         logger.info("Parsing template %s - %s", folder, filename)
         rendered = self._render_template(filename, folder, inputs)
-        rendered_dict = load(rendered)
-        logger.info("Rendered template %s", rendered_dict)
+        rendered_dict = load(rendered, Loader=Loader)
+        # logger.debug("Rendered template %s", rendered_dict)
         return rendered_dict
 
     def load_inputs(self, folder, filename):
         full_path = self._full_path(folder)
         inputs_filename = 'default-' + filename
         inputs_filepath = os.path.join(full_path, self.inputs_folder, inputs_filename)
-        logger.info("loading default inputs %s", inputs_filepath)
+        logger.debug("loading default inputs %s", inputs_filepath)
         inputs = self.load_file(inputs_filepath)
         return inputs
 
@@ -68,15 +68,16 @@ class TemplateParser:
 class Scenario(Content):
     def __init__(self):
         Content.__init__(self)
-        self.topology = None
-        self.requirements = None
-        self.settings = None
-        self.orchestration = None
-
+        self.nodes = None
+        self.links = None
+        self._topology = None
+        self._proceedings = None
+        
     def _init(self, **kwargs):
         scenario_items = kwargs.get("scenario")
+        self._topology = scenario_items
         # logger.info("scenario_items %s", scenario_items)
-        _items = ['orchestration', 'topology', 'requirements']
+        _items = ['nodes', 'links']
         if all([True if _item in scenario_items.keys() else False for _item in _items]):
             logger.debug('ok: scenario does contain mandatory fields')
             for _item, _value in scenario_items.items():
@@ -84,12 +85,18 @@ class Scenario(Content):
                     self.set(_item, _value)
             return True
         else:
-            logger.debug('error: scenario does not contain mandatory fields %s', _item)
+            logger.debug('error: scenario does not contain mandatory fields %s', _items)
             return False
+
+    def get(self):
+        return self._topology
+
+    def set_proceedings(self, proceedings):
+        self._proceedings = proceedings
 
     def check_nodes(self, structure, type_="agents"):
         available = structure.get(type_, [])
-        required = self.settings.get(type_, [])
+        required = self._proceedings.get(type_, [])
         logger.info("available %s and required %s", available, required)    
         if required:
             req = True
@@ -131,6 +138,10 @@ class Scenario(Content):
         # logger.debug('Selected agents %s - monitors %s, ', agents, monitors)
         return mappings
         
+    def parse_req_tool_params(self, req_params_ls):
+        req_params = { param.get("input"):param.get("value") for param in req_params_ls}
+        return req_params
+
     #Checks if all probers/listeners ids of required agents/monitors are available in some available manager component
     #and returns selected satisfied tools (required tool ids with params)
     def _check_components_params(self, req_component_tools, aval_component_tools):
@@ -139,19 +150,30 @@ class Scenario(Content):
             logger.info("All component tools id ack")
             ack_req_tools = []
             ack_req_tool_ids = []
+            
             for req_tool in req_component_tools:
                 aval_tool = aval_component_tools.get(req_tool.get("id"))
                 aval_params = aval_tool.get("parameters")
-                req_params = req_tool.get("parameters")
-                # logger.info("aval_params %s - req_params %s", aval_params, req_params)
+                req_params_ls = req_tool.get("parameters")
+                
+                req_params = self.parse_req_tool_params(req_params_ls)
+                
+                logger.info("aval_params %s - req_params %s", aval_params, req_params)
                 #Checks if all params in req prober/listener is contained in available tools params
                 if all([True if param in aval_params else False for param in req_params.keys()]):            
-                    ack_req_tools.append(req_tool)
-                    ack_req_tool_ids.append(req_tool.get("id"))
-
+                    ack_req_tool = {
+                        "id":req_tool.get("id"),
+                        "name": req_tool.get("name", None),
+                        "parameters": req_params,
+                    }
+                    
+                    ack_req_tool_set = [ack_req_tool]
                     req_tool_instances = req_tool.get("instances", 1)
                     if req_tool_instances:
-                        ack_req_tools = ack_req_tools*len(range(req_tool_instances))
+                        ack_req_tool_set = ack_req_tool_set*len(range(int(req_tool_instances)))
+
+                    ack_req_tools.extend(ack_req_tool_set)
+                    ack_req_tool_ids.append(req_tool.get("id"))
             
             #Check if all tool ids (all required probers/listeners to run in a agent/monitor) are satisfied
             if all([True if tool.get("id") in ack_req_tool_ids else False for tool in req_component_tools]):
@@ -165,7 +187,7 @@ class Scenario(Content):
 
     def _check_components(self, availables, component_type):
         logger.info("Checking components/tools/params")
-        required_components = self.settings.get(component_type)
+        required_components = self._proceedings.get(component_type)
         available_components = availables.get(component_type)
         component_tool_type = 'probers' if component_type == 'agents' else 'listeners'
 
@@ -221,20 +243,6 @@ class Scenario(Content):
         logger.debug("NOT all components, tools, and params - selected")
         return None
 
-    def needs_deployment(self):
-        orch_ack = self.orchestration.get("deploy")
-        return orch_ack
-
-    def get_deployment(self):
-        deployment = {
-            'topology': self.topology,
-            'requirements': self.requirements,
-        }
-        return deployment
-
-    def get_entrypoint(self):
-        return self.orchestration.get("entrypoint")
-
 
 class VNFBD(Content):
     def __init__(self):
@@ -244,10 +252,11 @@ class VNFBD(Content):
         self.description = None
         self.version = None
         self.author = None
-        self.procedures = None
+        self.experiments = None
+        self.environment = None
         self.targets = None
+        self.proceedings = None
         self.scenario = Scenario()
-        self.settings = None
         self._test_id = 0
         self._inputs = None
         self._filename = None
@@ -255,6 +264,7 @@ class VNFBD(Content):
         self._parser = TemplateParser()
         self._mux_inputs = {}
         self._deployed = False
+        self._informed = False
         self._first_input = True
         self._input_ids = None
 
@@ -264,13 +274,23 @@ class VNFBD(Content):
     def ack_deploy(self):
         self._deployed = True
 
+    def info(self):
+        return self._informed
+
+    def ack_info(self):
+        self._informed = True
+
     def get_inputs(self):
         return self._inputs
 
-    def get_procedures(self):
-        return self.procedures
+    def get_experiments(self):
+        return self.experiments
 
-    def get_test_id(self):
+    def get_trials(self):
+        trials = self.experiments.get("trials")
+        return trials
+
+    def get_test(self):
         return self._test_id
 
     def set_test_id(self, test_id):
@@ -311,20 +331,20 @@ class VNFBD(Content):
 
     def _init(self, **kwargs):
         _items = ['id', 'name', 'author', 'version', 'description',
-                  'procedures', 'targets', 'settings']
+                  'experiments', 'environment', 'targets', 'proceedings']
         if all([True if _item in kwargs.keys() else False for _item in _items]):
-            logger.debug('ok: vnf-bd does contain mandatory fields')
             for _item, _value in kwargs.items():
                 if _item in _items:
                     self.set(_item, _value)
-
-            logger.debug('vnf-bd items set: %s', self.items())
+            
+            logger.info('ok: vnf-bd does contain mandatory fields')
+            logger.debug('vnf-bd items set: %s', self.keys())
 
             self.scenario._init(**kwargs)
-            self.scenario.set('settings', self.settings)
+            self.scenario.set_proceedings(self.proceedings)
             return True
         else:
-            logger.debug('error: vnf-bd does not contain mandatory fields %s', _item)
+            logger.info('error: vnf-bd does not contain mandatory fields %s', _items)
             return False
 
     def satisfy_scenario(self, manager_info):
@@ -435,14 +455,15 @@ class VNFBD(Content):
         logger.debug("Multiplexed vnfbd inputs %s", mux_inputs)
         self._input_ids = 500
 
-        tests = self.procedures.get("repeat").get("tests", 1)
-        logger.debug("Tests %s", tests)
+        tests = self.experiments.get("tests", 1)
         for _input in mux_inputs:
             for test_id in range(tests):
                 _input_test = copy.deepcopy(_input)
-                _input_test["test_id"] = test_id
+                _input_test["test"] = test_id
                 self._mux_inputs[self._input_ids] = _input_test
                 self._input_ids += 1
+
+        logger.debug("vnf-bd tests %s - total inputs %s", tests, len(self._mux_inputs))
         self._input_ids = 500
 
     def get_current_input_id(self):
@@ -471,14 +492,16 @@ class VNFBD(Content):
             #Defines Id that will be used by vnfbd instance of such current_input
             next_input["id"] = next_input_id
             self._input_ids = next_input_id     
-        logger.debug("VNFBD next input %s", next_input)
+        
+        logger.debug("vnf-bd next input %s", next_input)
+        logger.info("vnf-bd input id %s - total %s", next_input, len(self._mux_inputs))
         return next_input
 
-    def requires_orchestration(self):
-        orch_req = self.scenario.needs_deployment()
-        return orch_req
+    def environment_deploy(self):
+        needs_deploy = self.environment.get('deploy')
+        return needs_deploy
 
     def get_deployment(self):
-        scenario_deployment = self.scenario.get_deployment()
-        scenaro_entrypoint = self.scenario.get_entrypoint()
-        return scenaro_entrypoint, scenario_deployment
+        topology = self.scenario.get()
+        entrypoint_plugin = self.environment.get('plugin')
+        return entrypoint_plugin, topology

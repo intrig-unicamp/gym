@@ -285,18 +285,15 @@ class Error(Content):
 class Evaluation(Response):
     def __init__(self, id=0):
         Response.__init__(self, id, response='evaluation')
-        self.tool = None
-        self.type = None
-        self.series = False
+        self.source = None
+        self.timestamp = None
         self.metrics = None
 
 
 class Snapshot(Response):
     def __init__(self, id=0):
         Response.__init__(self, id, response='snapshot')
-        self.host = None
-        self.component = None
-        self.role = None
+        self.origin = {}
         self.trial = 0
         self.evaluations = {}
 
@@ -304,9 +301,6 @@ class Snapshot(Response):
 class Report(Response):
     def __init__(self, id=0):
         Response.__init__(self, id, response='report')
-        self.host = None
-        self.component = None
-        self.role = None
         self.test = 0
         self.snapshots = {}
 
@@ -317,11 +311,11 @@ class Built(Response):
         self.ack = {}
 
 
-class VNFBR(Response):
+class Result(Response):
     def __init__(self, id=0):
-        Response.__init__(self, id, response='vnfbr')
-        self.vnfbd = {}
-        self.vnfpp = {}
+        Response.__init__(self, id, response='result')
+        self.layout = {}
+        self.vnfbr = {}        
 
 
 

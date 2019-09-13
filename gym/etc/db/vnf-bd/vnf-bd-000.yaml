@@ -1,68 +1,98 @@
 descriptor_version: 0.02
 id: "000"
-name: "vnf-bd-0.00"
+name: "vnf-bd-000"
 version: "0.1"
 author: "Raphael Vicente Rosa"
 description: "Realizes the test of two agents ping on localhost"
 
-procedures:
-  repeat:
-    trials: 1
-    tests: 1
-    methods: 1
+experiments:
+  trials: 1
+  tests: 1
+  methods: 1
 
 targets:
   - id: null
     name: "localhost"
     version: null
     author: null
-    vendor: null
-    description: "The host machine" 
+    description: "host machine"
+
+environment:
+  name: "localhost"
+  description: "Establishes scenario in host with processes"   
+  deploy: false
+  plugin: null
 
 scenario:
-  orchestration: 
-    deploy: false
-    plugin: null
-    entrypoint: null
+  nodes:
+    - id:  "agent-1"
+      image:  null
+      image_format: null
+      entrypoint: null
+    - id:  "agent-2"
+      image:  null
+      image_format: null
+      entrypoint: null
+    - id:  "manager"
+      image:  null
+      image_format: null
+      entrypoint: null
+  links: null
 
-  topology:
-    nodes:
-      - id:  "agent-1"
-        image:  null
-        image_format: null
-        type: "agent"
-        entrypoint: null
-      - id:  "agent-2"
-        image:  null
-        image_format: null
-        type: "agent"
-        entrypoint: null
-      - id:  "manager"
-        image:  null
-        image_format: null
-        type: "manager"
-        entrypoint: null
+proceedings:
+  managers:
+    - id: "manager"
 
-  requirements: null
-
-
-settings:
   agents:
     - id: "agent-1"
       probers:
         - id: 2
           parameters:
-            interval: '1'
-            duration: null
-            packets: '5'
-            frame_size: '64'
-            target: 'www.google.com'
+            - input: "interval"
+              value: '1'
+            - input: "duration"
+              value: null
+            - input: "packets"
+              value: '5'
+            - input: "frame_size"
+              value: '64'
+            - input: "target"
+              value: 'www.google.com'
+        - id: 4
+          name: "iperf3"
+          parameters:
+            - input: "client"
+              value: true
+            - input: "server"
+              value: "127.0.0.1"
+            - input: "port"
+              value: "6594"
+            - input: "protocol"
+              value: "udp"
+            - input: "duration"
+              value: "10"
+            - input: "rate"
+              value: "10G"
+
     - id: "agent-2"
       probers:
         - id: 2
           parameters:
-            interval: null
-            duration: "5"
-            packets: null
-            frame_size: '128'
-            target: '127.0.0.1'
+            - input: "interval"
+              value: null
+            - input: "duration"
+              value: {{ settings.duration }}
+            - input: "packets"
+              value: null
+            - input: "frame_size"
+              value: '128'
+            - input: "target"
+              value: '127.0.0.1'
+        - id: 4
+          parameters:
+            - input: "client"
+              value: false
+            - input: "port"
+              value: "6594"
+            - input: "duration"
+              value: "10"

@@ -45,27 +45,35 @@ class ProberIperf(Prober):
         return opts, stop, timeout
 
     def parser(self, out):
-        eval = {}
+        _eval = []
+
         lines = [line for line in out.split('\n') if line.strip()]
         if len(lines) == 7:
             bandwidth = lines[-1].split(' ')[-2]
             units = lines[-1].split(' ')[-1]
-            eval = {
-                'bandwidth': {
-                    'value': float(bandwidth),
-                    'units': units,
-                }
+            m = {
+                "name": "throughput",
+                "series": False,
+                "type": "float",
+                "unit": units,
+                "value": float(bandwidth),
             }
+            _eval = [m]
+
         elif len(lines) == 11 or len(lines) == 8:
             bandwidth = lines[-1].split(' ')[-13]
             units = lines[-1].split(' ')[-12]
-            eval = {
-                'bandwidth':{
-                    'value': float(bandwidth),
-                    'units': units,
-                }
+
+            m = {
+                "name": "throughput",
+                "series": False,
+                "type": "float",
+                "unit": units,
+                "value": float(bandwidth),
             }
-        return eval
+            _eval = [m]
+
+        return _eval
 
 
 if __name__ == '__main__':

@@ -60,16 +60,36 @@ class ProberTcpReplay(Prober):
         return _filepath
 
     def parser(self, output):
-        eval_info = None
+        _eval = []
         lines = output.split('\n')
         if len(lines) > 1:
             actual = [line for line in lines if 'Actual' in line]
             actual_info = actual.pop().split()
-            eval_info = {
-                'packets': int(actual_info[1]),
-                'time': float(actual_info[-2]),
+            
+            # eval_info = {
+            #     'packets': int(actual_info[1]),
+            #     'time': float(actual_info[-2]),
+            # }
+
+            m1 = {
+                "name": "packets",
+                "series": False,
+                "type": "int",
+                "unit": "packets",
+                "value": int(actual_info[1]),
             }
-        return eval_info
+
+            m2 = {
+                "name": "time",
+                "series": False,
+                "type": "float",
+                "unit": "seconds",
+                "value": float(actual_info[-2]),
+            }
+
+            _eval = [m1, m2]
+
+        return _eval
 
 
 if __name__ == '__main__':

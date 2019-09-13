@@ -24,11 +24,10 @@ class EventTasks(EventBase):
         super(EventTasks, self).__init__()
         self.vnfbd = vnfbd
 
-class EventBR(EventBase):
-    def __init__(self, layout, vnfbr):
-        super(EventBR, self).__init__()
-        self.layout = layout
-        self.vnfbr = vnfbr
+class EventResult(EventBase):
+    def __init__(self, result):
+        super(EventResult, self).__init__()
+        self.result = result
 
 class EventVNFPP(EventBase):
     def __init__(self, vnfpp):

@@ -43,7 +43,7 @@ class Processor:
         logger.info('stopping process after %s', timeout)
         if self.process:
             #if process stop, usually server, so waits one second more
-            time.sleep(timeout+1)
+            time.sleep(timeout)
             self.process.kill()
             logger.info('process stopped %s', self.process.pid)
             self.process = None
@@ -89,6 +89,10 @@ class Prober:
         self.name = name
         self.parameters = parameters
         self.metrics = metrics
+        self._type = "prober"
+        self._call = ""
+        self._tstart = None
+        self._tstop = None
         self._output = {}
         self._command = None
         self._default_params = Prober.PARAMS
@@ -123,6 +127,22 @@ class Prober:
                 logger.info("serialize option not found %s", k)
         return options
 
+    def source(self):
+        source = {
+            "id": self.id,
+            "type": self._type,
+            "name": self.name,
+            "call": self._call,
+        }
+        return source
+
+    def timestamp(self):
+        ts = {
+            "start": self._tstart,
+            "stop": self._tstop,
+        }
+        return ts
+
     def probe(self, opts):
         cmd = []
         cmd.append(self._command)
@@ -133,19 +153,31 @@ class Prober:
             return
         
         cmd.extend(opts)
+
+        self._call = " ".join(cmd)
+
+        self._tstart = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         ret, out, err = self._processor.start_process(cmd, stop, timeout)
+        self._tstop = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
         output = out.decode('UTF-8')
         error = err.decode('UTF-8')
         
         if ret == 0:
             logger.info("process executed %s", ret)
-            self._output = self.parser(output)
+            metrics = self.parser(output)
         elif stop and ret == -9:
             logger.info("process executed and stopped %s", ret)
-            self._output = self.parser(output)
+            metrics = self.parser(output)
         else:
             logger.info("process error %s, %s", output, error)
-            self._output = {"error": error}        
+            metrics = {"error": error}   
+
+        self._output = {
+            "metrics": metrics, 
+            "timestamp": self.timestamp(),
+            "source": self.source(),
+        }
 
     def to_json(self, value):
         return json.dumps(value, sort_keys=True, indent=4)

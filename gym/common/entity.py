@@ -5,7 +5,7 @@ from gym.common.profiler.profiler import Profiler
 from gym.common.identity import Peers, Identity
 from gym.common.mailing import Mailing
 from gym.common.messages import Message, rpc_map, Hello, Info
-from gym.common.events import EventBase, EventGreetings, EventInfo, EventMsg
+from gym.common.events import EventBase, EventGreetings, EventMsg
 
 
 logger = logging.getLogger(__name__)
@@ -241,7 +241,7 @@ class Component(Messenger):
     @set_ev_handler(EventGreetings)
     def greetings(self, ev):
         msg = ev.msg if hasattr(ev, "msg") else ev
-        logger.info("Greetings to %s", msg)
+        logger.info("making greetings - %s", msg)
         contacts = msg.get("contacts")
         if contacts:
             outputs = []
@@ -253,7 +253,7 @@ class Component(Messenger):
                     url = contact
                     subcontacts = []
                 
-                logger.info("Greeting Hello to %s", url)
+                logger.info("greeting hello to %s", url)
                 peer = self.peers.create(url)
                 hello = Hello(
                     uuid=self.identity.get('uuid'),
@@ -338,7 +338,6 @@ class Component(Messenger):
                 logger.info("didn't received all infos yet")
         else:
             self.ack_info(msg)
-        self.send_event(EventInfo)
         
     def ack_info(self, msg):
         ack = self.peers.info(msg)

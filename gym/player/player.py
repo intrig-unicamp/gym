@@ -3,13 +3,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 from gym.common.entity import Component, set_ev_handler
-from gym.common.messages import Report, Task, Deploy, Built, VNFBR
+from gym.common.messages import Report, Task, Deploy, Built, Result
 from gym.player.vnfbd import VNFBD
 from gym.player.vnfpp import VNFPP
-from gym.common.events import EventTasks, EventInfo, EventGreetings, EventVNFPP, EventBR
+from gym.player.vnfbr import VNFBR
+from gym.common.events import EventResult
 
 from gym.common.process import Loader
 from gym.player.store import Storage
+
+from gym.player.plugins.containernet import Environment as cnetenv
 
 
 ETC_REL_PATH = '../etc/db/vnf-bd/'
@@ -159,6 +162,8 @@ class Controller(Component):
         self._loader = Loader()
         self._etc_folder = ETC_REL_PATH
         self._vnfbd_db = {}
+        self.cnet_plugin = None
+        self.current_vnfbd_instance = None
         self._load_vnfdbs()
 
     def _update_path(self):
@@ -169,44 +174,69 @@ class Controller(Component):
 
     def _load_vnfdbs(self):
         _path = self._update_path()
-        logger.debug('Load vnfdbs - path %s', _path)
+        logger.info('Load vnf-db in folder: %s', _path)
         files = self._loader.load_files(_path, 'vnf-bd-')
-        logger.debug("vnfbd files %s", files)
         for filename in files:
-            # vnfbd = VNFBD()
-            logger.debug("vnfbd loading %s", filename)
             _id = filename.split('-')[-1].split('.')[0]          
-            # if vnfbd.load(filename):
-            #     _id = vnfbd.get('id')
             self._vnfbd_db[_id] = filename
-            # else:
-            #     logger.debug("could not load vnfbd %s", filename)
-        logger.info("vnfbds ids loaded %s", list(self._vnfbd_db.keys()))
-        logger.debug("vnfbds loaded %s", list(self._vnfbd_db.items()))
+            
+        logger.info("vnf-bds loaded %s", list(self._vnfbd_db.items()))
 
-    def clear_instances(self, vnfbd):
+    def clean(self, vnfbd):
         vnfbd_id = vnfbd.get_id()
         vnfpp_id = self._vnfbd_vnfpp.get(vnfbd_id)
         
+        logger.info("cleaning vnf-bd id %s", vnfbd_id)
         del self._vnfbd_layout[vnfbd_id]
         del self._vnfbds[vnfbd_id]
         del self._vnfbd_vnfpp[vnfbd_id]
         del self._vnfpps[vnfpp_id]
+        self.current_vnfbd_instance = None
 
-    def build_vnfbr(self, vnfbd, vnfpp):
-        logger.info("build_vnfbr")
-        vnfbr = VNFBR()
-        vnfbr.set("vnfbd", vnfbd)
-        vnfbr.set("vnfpp", vnfpp)
-        vnfpp_id = vnfpp.get_id()
+    def end_layout(self):
+        vnfbd_instance_id = self.current_vnfbd_instance.get_id()
+        vnfbd_id = self._vnfbd_ids.get(vnfbd_instance_id, None)
+
+        if self.current_vnfbd_instance.deployed():
+            self.deploy(self.current_vnfbd_instance, "stop")
+
+        if vnfbd_id:
+            vnfbd = self._vnfbds.get(vnfbd_id)
+            layout = self._vnfbd_layout.get(vnfbd_id)
+
+            result = Result()
+            result.set("layout", layout)
+
+            logger.info("generating result - end layout")
+            self.send_event(EventResult(result))
+            self.clean(vnfbd)
+
+    def vnfbr(self, vnfbd, vnfpp):
+        logger.info("generating vnf-br")
         vnfbd_id = vnfbd.get_id()
         layout = self._vnfbd_layout.get(vnfbd_id)
-        self.send_event(EventBR(layout, vnfbr))
-        self.clear_instances(vnfbd)
+        layout_id = layout.get("id")
+        
+        vnfbr = VNFBR(layout_id)
+        vnfbr.set_attrib("vnfbd", vnfbd)
+        vnfbr.set_attrib("vnfpp", vnfpp)
+        logger.debug(vnfbr.to_json())
+        vnfbr.compile()
 
-    def build_vnfpp(self, vnfbd):
-        logger.info("build_vnfpp")
-        self.check_orchestration(vnfbd)        
+        result = Result()
+        result.set("vnfbr", vnfbr)
+        result.set("layout", layout)
+        self.send_event(EventResult(result))
+        self.clean(vnfbd)
+
+    def finish(self, vnfbd):
+        logger.info("Finishing vnf-bd - generating vnf-pp")
+        
+        vnfbd_instance = self.get_vnfbd_instance(vnfbd)
+        if vnfbd_instance:
+            if vnfbd_instance.deployed():
+                self.deploy(vnfbd_instance, "stop")
+    
         self.unregister_vnfbd_instance(vnfbd)
         vnfbd_id = vnfbd.get_id()
         vnfpp_id = self._vnfbd_vnfpp.get(vnfbd_id)
@@ -214,92 +244,60 @@ class Controller(Component):
         layout = self._vnfbd_layout.get(vnfbd_id)
         layout_id = layout.get_id()
         vnfpp.compile(layout_id=layout_id)
-        self.build_vnfbr(vnfbd, vnfpp)
+        self.vnfbr(vnfbd, vnfpp)
 
     def digest(self, report):
         logger.info("digest report")
         report_id = report.get_id()
         #Get report_id has the same id as vnfbd_instance derived from vnfbd_id (self._vnfbd_ids stores such mapping)
         vnfbd_id = self._vnfbd_ids.get(report_id, None)
+
         if vnfbd_id:
-            logger.info("Digest report from vnfbd_instance_id %s instance of %s", report_id, vnfbd_id)
+            logger.info("Digest report id %s from vnf-bd id %s", report_id, vnfbd_id)
             vnfpp_id = self._vnfbd_vnfpp.get(vnfbd_id)
             vnfpp = self._vnfpps.get(vnfpp_id)
             vnfbd = self._vnfbds.get(vnfbd_id)
             vnfbd_instance = self.get_vnfbd_instance(vnfbd)
             vnfpp.add_report(vnfbd_instance, report)
             # vnfbd = self._vnfbds.get(vnfbd_id)
-            self.process_vnfbd(vnfbd) 
-            return True          
+            self.check(vnfbd)
+             
         else:
             logger.info("could not find associated vnfbd for vnfbd_instance_id %s", report_id)
-            return False
+            
+    def task(self, vnfbd_instance):
+        vnfbd_id = vnfbd_instance.get_id()
+        structure = self.assistants.satisfy_structure(vnfbd_instance)
 
-    def task(self, vnfbd_instance, manager_id, manager_components):
-        task_id = vnfbd_instance.get_id()
-        logger.info("task for vnfdb instance %s", task_id)
-        task = Task(id=task_id)
+        if structure:
+            logger.info("Creating task for vnf-bd id %s", vnfbd_id)
+            manager_id, manager_components = structure
+         
+            task = Task(id=vnfbd_id)
+            
+            test = vnfbd_instance.get_test()
+            trials = vnfbd_instance.get_trials()
+            task.set("test", test)
+            task.set("trials", trials)            
+            logger.debug("test %s - trials %s", test, trials)
 
-        vnfbd_procs = vnfbd_instance.get_procedures()
-        trials = vnfbd_procs.get("repeat").get("trials", 0)
-        test_id = vnfbd_instance.get_test_id()
-        task.set("trials", trials)
-        task.set("test", test_id)
-        logger.debug("Trials %s", trials)
+            agents = manager_components.get("agents", {})
+            for agent_id, probers in agents.items():        
+                task.add_agent(agent_id, probers)
 
-        agents = manager_components.get("agents", {})
-        for agent_id, probers in agents.items():        
-            task.add_agent(agent_id, probers)
+            monitors = manager_components.get("monitors", {})
+            for monitor_id, listeners in monitors.items():        
+                task.add_monitor(monitor_id, listeners)
 
-        monitors = manager_components.get("monitors", {})
-        for monitor_id, listeners in monitors.items():        
-            task.add_monitor(monitor_id, listeners)
-
-        logger.info("addressing task")
-        peer = self.peers.get_by("uuid", manager_id)
-        task.to(peer.get_address(), prefix=peer.get_prefix())
-        return task
-
-    def build_task(self, vnfbd):
-        logger.info("build_task")
-        tasks_structure = self.assistants.satisfy_structure(vnfbd)
-        if tasks_structure:
-            manager_id, manager_components = tasks_structure
-            task = self.task(vnfbd, manager_id, manager_components)
+            peer = self.peers.get_by("uuid", manager_id)
+            task.to(peer.get_address(), prefix=peer.get_prefix())
+            
             logger.debug(task.to_json())
             outputs = [task]
             self.exit(outputs)
         else:
-            logger.debug("tasks_structure not built %s", tasks_structure)
-
-    def check_orchestration(self, vnfbd):
-        logger.info("check_orchestration")
-        vnfbd_instance = self.get_vnfbd_instance(vnfbd)
-        if vnfbd_instance:
-            if vnfbd_instance.deployed():
-                vnfbd_instance_callback = self.identity.get('url')
-                outputs = self.build_deploy(vnfbd_instance, vnfbd_instance_callback, "stop", continuous_deploy=False)
-                self.exit(outputs)
-
-    def build_deploy(self, vnfbd_instance, vnfbd_instance_callback, vnfbd_request, continuous_deploy=True):
-        vnfbd_instance_id = vnfbd_instance.get_id() 
-        entrypoint, vnfbd_instance_deployment = vnfbd_instance.get_deployment()
-        deploy = Deploy()
-        deploy.set("scenario", vnfbd_instance_deployment)
-        deploy.set("callback", vnfbd_instance_callback)
-        deploy.set("request", vnfbd_request)
-        deploy.set("instance", vnfbd_instance_id)
-        deploy.set("continuous", continuous_deploy)
-        deploy.to(entrypoint, prefix=vnfbd_instance_id)
-        outputs = [deploy]
-        
-        if vnfbd_request == "start":
-            self.schedule_event(EventInfo, EventTasks(vnfbd_instance))
-            logger.info("Deploy START of VNFBD instance %s created - Scheduled Tasks", vnfbd_instance_id)
-        if vnfbd_request == "stop":
-            logger.info("Deploy STOP of VNFBD instance %s created", vnfbd_instance_id)
-        return outputs 
-
+            logger.info("could not create task for vnf-bd id %s - structure %s", vnfbd_id, structure)            
+    
     def register_vnfbd_instance(self, vnfbd, vnfbd_instance):
         vnfbd_id = vnfbd.get_id()
         vnfbd_instance_id = vnfbd_instance.get_id()
@@ -327,26 +325,48 @@ class Controller(Component):
                 return vnfbd_instance
         return None               
 
-    def build_orchestration(self, vnfbd):
-        logger.info("vnfbd_orchestration")
-        outputs = []
-        vnfbd_instance_inputs = vnfbd.next_input()
-        vnfbd_instance = VNFBD()
-        vnfbd_instance.load(vnfbd.filename(), inputs=vnfbd_instance_inputs)
-        vnfbd_instance.set_id(vnfbd_instance_inputs.get("id"))
-        vnfbd_instance.set_test_id(vnfbd_instance_inputs.get("test_id"))
-        self.register_vnfbd_instance(vnfbd, vnfbd_instance)
-        vnfbd_instance_callback = self.identity.get('url')
-        outputs = self.build_deploy(vnfbd_instance, vnfbd_instance_callback, "start")
-        return outputs
+    def load_plugin(self, entrypoint_plugin, environment_topology):
+        plugin_type = entrypoint_plugin.get("type")
+
+        if plugin_type == "containernet":
+            self.cnet_plugin = cnetenv(entrypoint_plugin, environment_topology)
+            deploy_scenario = self.cnet_plugin.build()
+
+            params = entrypoint_plugin.get("parameters")
+            entrypoint_ls = [param.get("value") for param in params if param.get("input") == "entrypoint"]
+            if entrypoint_ls:
+                entrypoint = entrypoint_ls.pop()
+                logger.info("Environment set plugin %s - entrypoint %s", plugin_type, entrypoint)
+                return entrypoint, deploy_scenario
+        return None, None
     
-    def build_vnfbd(self, filename, inputs):
-        vnfbd = VNFBD()
-        logger.info("build vnfbd %s", filename)
+    def deploy(self, vnfbd_instance, request):
+        callback = self.identity.get('url')
+        instance_id = vnfbd_instance.get_id() 
+
+        plugin, topology = vnfbd_instance.get_deployment()
+        entrypoint, scenario = self.load_plugin(plugin, topology)
+
+        deploy = Deploy()
+        deploy.set("scenario", scenario)
+        deploy.set("callback", callback)
+        deploy.set("request", request)
+        deploy.set("instance", instance_id)
+        deploy.to(entrypoint, prefix=instance_id)
+        outputs = [deploy]
+        
+        logger.info("deploying vnf-bd instance: id %s - request %s", instance_id, request)
+        self.exit(outputs)
+    
+    def load_vnfbd(self, filename, inputs):
+        logger.info("build vnf-bd filename %s", filename)
+        vnfbd = VNFBD()       
+        
         if vnfbd.load(filename, inputs=inputs):
             vnfbd_id = vnfbd.get_id()
+        
             if vnfbd_id in self._vnfbds:
-                logger.info("fail loaded vnfbd instance %s - already in place/execution", vnfbd_id)
+                logger.info("fail loaded vnf-bd instance %s - already in place/execution", vnfbd_id)
                 return None
             else:
                 vnfbd.multiplex_parameters(inputs)
@@ -356,49 +376,91 @@ class Controller(Component):
                 vnfpp.parse_inputs(vnfbd.get_inputs())
                 self._vnfpps[vnfpp.get_id()] = vnfpp
                 self._vnfbd_vnfpp[vnfbd_id] = vnfpp.get_id() 
-                logger.info("loaded vnfbd instance %s and respective vnfpp created", vnfbd_id)
-                logger.debug(vnfbd.to_json())
+                logger.info("loaded vnf-bd instance id %s, and respective vnfpp created", vnfbd_id)
                 return vnfbd
-        
-    def process_vnfbd(self, vnfbd):
-        logger.debug("process_vnfbd")
-        outputs = []
-        if vnfbd.requires_orchestration():
-            if vnfbd.has_next_input():
-                outputs = self.build_orchestration(vnfbd)
-                self.exit(outputs)
-            else:
-                logger.info("No more deploys for VNFBD %s", vnfbd.get_id())
-                self.build_vnfpp(vnfbd)
+       
         else:
-            if vnfbd.has_next_input():
-                vnfbd_instance_inputs = vnfbd.next_input()
-                vnfbd_instance = VNFBD()
-                vnfbd_instance.load(vnfbd.filename(), inputs=vnfbd_instance_inputs)
-                vnfbd_instance.set_id(vnfbd_instance_inputs.get("id"))
-                vnfbd_instance.set_test_id(vnfbd_instance_inputs.get("test_id"))
-                self.register_vnfbd_instance(vnfbd, vnfbd_instance)
-                self.build_task(vnfbd_instance)
-            else:
-                logger.info("No more inputs for VNFBD %s", vnfbd.get_id())
-                self.build_vnfpp(vnfbd)
+            logger.info("vnf-bd not loaded %s", filename)
+            return None
+       
+    def instantiate(self, vnfbd):
+        vnfbd_instance_inputs = vnfbd.next_input()
+        vnfbd_instance = VNFBD()
+        vnfbd_instance.load(vnfbd.filename(), inputs=vnfbd_instance_inputs)
+        vnfbd_instance.set_id(vnfbd_instance_inputs.get("id"))
+        vnfbd_instance.set_test_id(vnfbd_instance_inputs.get("test"))
+        self.register_vnfbd_instance(vnfbd, vnfbd_instance)
+        self.current_vnfbd_instance = vnfbd_instance
+        return vnfbd_instance
 
-    def init_layout(self, layout):
-        logger.info("init_layout")
+    def check(self, vnfbd):
+        if vnfbd.has_next_input():
+            vnfbd_instance = self.instantiate(vnfbd)
+
+            if vnfbd.environment_deploy():            
+                logger.info("deploying vnf-bd")
+                self.deploy(vnfbd_instance, "start")                
+            else:
+                logger.info("deploying vnf-bd")
+                self.task(vnfbd_instance)
+        else:
+            logger.info("no more tests for vnf-bd: id %s", vnfbd.get_id())
+            self.finish(vnfbd)
+
+    def init(self, layout):
         vnfbd_layout = layout.get("vnf_bd")
         vnfbd_id = vnfbd_layout.get('id')
         vnfbd_inputs = vnfbd_layout.get('inputs', {})
-        logger.debug('VNF-BD: id %s - inputs %s', vnfbd_id, vnfbd_inputs)
+        logger.info('starting vnf-bd: id %s', vnfbd_id)
+
         if vnfbd_id in self._vnfbd_db:
             filename = self._vnfbd_db[vnfbd_id]
-            vnfbd = self.build_vnfbd(filename, vnfbd_inputs)
+            vnfbd = self.load_vnfbd(filename, vnfbd_inputs)
+
             if vnfbd:
+                logger.debug("starting vnf-bd: %s", vnfbd.to_json())
                 self._vnfbd_layout[vnfbd_id] = layout
-                self.process_vnfbd(vnfbd)
-                return True
+                self.check(vnfbd)
+            else:
+                logger.debug("processing layout ended for vnf-bd: id %s", vnfbd_id)
+
         else:
-            logger.debug("vnfbd id not in db %s", self._vnfbd_db.keys())
-        return False
+            logger.debug("vnf-bd id not registered in db %s", self._vnfbd_db.keys())
+
+    def ack(self, built):
+        self.current_vnfbd_instance.ack_deploy()
+        proceedings = self.current_vnfbd_instance.get("proceedings")
+
+        if proceedings.get("agents"):
+            agents = [ agent.get("host").get("node") for agent in proceedings.get("agents") ]
+        else:
+            agents = []
+
+        if proceedings.get("monitors"):
+            monitors = [ monitor.get("host").get("node") for monitor in proceedings.get("monitors") ] 
+        else:
+            monitors = []
+        
+        if proceedings.get("managers"):
+            managers = [ manager.get("host").get("node") for manager in proceedings.get("managers") ] 
+        else:
+            managers = []
+
+        ack_info = built.get("info")
+        for host,info in ack_info.items():
+            if host in agents:
+                info["role"] = "agent"
+            if host in monitors:
+                info["role"] = "monitor"
+            if host in managers:
+                info["role"] = "manager"
+
+        return built
+
+    def follow(self):
+        if self.current_vnfbd_instance:
+            self.current_vnfbd_instance.ack_info()
+            self.task(self.current_vnfbd_instance)
 
 
 class Greets:
@@ -440,20 +502,25 @@ class Greets:
 
     def make(self, ack):
         contacts = {"manager": [], "agent": [], "monitor": []}
-        deploy = ack.get("deploy")
+        info = ack.get("info")
         
-        for _, component in deploy.items():
-            component_type = component.get("type")
+        for _, component in info.items():
+            component_type = component.get("role")
             component_type = self.check_component_type(component_type)
             if component_type:
-                component_address = component.get("management").get("ip")
+                component_address = component.get("ip")
                 contact = self.frmt_contact(component_address, component_type)
                 if component_type in contacts:
                     contacts[component_type].append(contact)   
+        
         greets = self.frmt_greetings(contacts)
-        logger.debug("greetings after info - %s", greets)
-        self.event = {'contacts': greets}
-        return self.event
+        if greets:
+            logger.debug("greetings after info - %s", greets)
+            self.event = {'contacts': greets}
+            return self.event
+        else:
+            logger.debug("greetings could not load manager contact")
+            return None
 
 
 class Player(Controller):
@@ -461,62 +528,69 @@ class Player(Controller):
         Controller.__init__(self, "player", in_q, out_q, info)
         self.greets = Greets()
         self.storage = Storage()
+        self.state = "available"
         
     def update_info(self):
-        logger.debug('update_info')
+        logger.debug('updating peers info')
         managers = self.peers.get_by('role', 'manager', all=True)
         mgrs = [peer.info() for peer in managers]
-        logger.debug(mgrs)
+        # logger.debug(mgrs)
         try:
             self.assistants.fill_members(mgrs)      
         except Exception as e:
             logger.debug(e)
-
+        finally:
+            self.follow()
+        
     def built(self, msg):
-        logger.info("build msg received %s", msg.to_json())
-        ack = msg.get("ack")
+        logger.info("handling built message")
+        logger.debug("%s", msg.to_json())
+        
         self.peers.clear()
         self.assistants.clear()
-        logger.info("Identities and Assistants clear")
+        logger.info("player identities and assistants clear")
 
-        if ack.get("running"):
-            logger.info("Deploy Built running - making greetings")
+        built_ack = msg.get("ack")
+        if built_ack.get("running"):
+            logger.info("ack vnf-bd execution - deploy scenario started")           
+            ack = self.ack(built_ack)
             event = self.greets.make(ack)
-            self.send_event(EventGreetings(event))
+            if event:
+                self.greetings(event)
+            else:
+                logger.info("finishing vnf-bd execution - no greetings possible")
+                self.end_layout()
         else:
-            logger.info("Deploy Built NOT running")
-            logger.info("Finished vnfbd execution")
+            logger.info("finished vnf-bd execution - deploy scenario stopped")
 
     def layout(self, layout):
-        logger.info('layout')
-        ack = self.init_layout(layout)
-        logger.info("layout Processing Ack: %s", ack)
+        logger.info("handling layout message")
+        logger.debug(layout.to_json())
+        if self.state == "available":
+            self.state = "busy"
+            self.init(layout)
+        else:
+            logger.info("Layout not processed - vnf-bd in execution")
 
     def report(self, report):
-        logger.info('report')
+        logger.info("handling report message")
         logger.debug(report.to_json())
-        ack = self.digest(report)
-        logger.info("report digest %s", ack)
+        self.digest(report)
 
-    @set_ev_handler(EventBR)
-    def vnfbr(self, ev):
-        logger.info("vnfbr")
-        layout = ev.layout
-        vnfbr = ev.vnfbr
-        logger.debug(vnfbr.to_json())
+    @set_ev_handler(EventResult)
+    def result(self, ev):
+        logger.info("output vnf-br")        
+        result = ev.result
+        layout = result.get("layout")
         callback = layout.get("callback")
-        vnfbr.set_id(layout.get_id())
-        vnfbr.to(callback, prefix=layout.get_prefix())
-        outputs = [vnfbr]
+        result.set_id(layout.get_id())
+        result.to(callback, prefix=layout.get_prefix())
+        outputs = [result]
         self.exit(outputs)
-        self.storage.store(vnfbr)
-        logger.info("Finished vnfbd execution")
-
-    @set_ev_handler(EventTasks)
-    def vnfbd_tasks(self, ev):
-        vnfbd = ev.vnfbd
-        vnfbd.ack_deploy()
-        self.build_task(vnfbd)
+        self.storage.store(result)
+        logger.info("ended vnf-bd execution")
+        self.state = "available"
+        # self.queued()
 
     def status(self):
         logger.debug('status')

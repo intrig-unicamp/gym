@@ -132,6 +132,7 @@ case "$COMMAND" in
                 sleep 2
                 echo_bold "-> Starting Player"
                 byobu new-window "gym-player --id player --url http://172.17.0.1:8990 --contacts http://127.0.0.1:8987 --debug"
+
                 sleep 5
             ;;
             *)
@@ -145,7 +146,7 @@ case "$COMMAND" in
             ;;
         esac
 
-        sleep 4
+        sleep 5
         echo_bold "-> Deploying Layout"
 
         curl -s -X POST --header "Content-Type: application/json" -d "$(envsubst < ${SOURCE})" \

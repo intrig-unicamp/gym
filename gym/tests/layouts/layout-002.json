@@ -6,15 +6,9 @@
         "vnf_bd": {
             "id": "002",
             "inputs": {
-                "orchestration": {
-                    "deploy": true,
-                    "plugin": "containernet",
-                    "entrypoint": "http://127.0.0.1:7878/001/"
-                },
                 "sut": {
                     "id": "d2",
                     "name": "bypass_vnf",
-                    "type": "sut",
                     "version": 0.1,
                     "image": "vnf/bypass:0.1",
                     "author": "None",
@@ -41,10 +35,7 @@
                 },
                 "agent_one": {
                     "id":"d1",
-                    "type": "agent",
                     "image": "raphaelvrosa/gym:0.1",
-                    "entrypoint": "gym-agent --id {host_id} --url http://{host_ip}:8988 > gym-agent.log 2>&1 &",
-                    "volumes": "",
                     "ports": {
                         "input":{
                             "id": "eth1",
@@ -55,10 +46,7 @@
                 },
                 "agent_two": {
                     "id":"d3",
-                    "type": "agent",
                     "image": "raphaelvrosa/gym:0.1",
-                    "entrypoint": "gym-agent --id {host_id} --url http://{host_ip}:8988 > gym-agent.log 2>&1 &",
-                    "volumes": "",
                     "ports": {
                         "input":{
                             "id": "eth1",
@@ -69,16 +57,11 @@
                 },
                 "manager": {
                     "id":"d5",
-                    "type": "manager",
-                    "image": "raphaelvrosa/gym:0.1",
-                    "entrypoint": "gym-manager --id {host_id} --url http://{host_ip}:8989 > gym-mngr.log 2>&1 &",
-                    "volumes": ""
+                    "image": "raphaelvrosa/gym:0.1"
                 },
                 "monitor": {
                     "id":"d4",
-                    "type": "monitor",
-                    "entrypoint": "gym-monitor --id {host_id} --url http://{host_ip}:8987 > gym-mon.log 2>&1 &",
-                    "volumes": ""
+                    "type": "monitor"
                 },
                 "settings": {
                     "trials": 1,
@@ -89,7 +72,7 @@
                     "protocol": "udp",
                     "interval": "1",
                     "monitor": {
-                        "mon_container_target": "mn.d2"
+                        "mon_container_target": "d2"
                     }
                 },
                 "links": {
@@ -98,13 +81,6 @@
                     "network_type": "E-LAN"
                 }                
             }
-        },
-        "time": {
-            "duration": null,
-            "every": 0,
-            "repeat": 0,
-            "timestamp": "Tue, 28 Feb 2017 12:18:05",
-            "when": null
         }
     }
 }

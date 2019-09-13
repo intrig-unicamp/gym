@@ -62,19 +62,50 @@ class ProberPing(Prober):
                     pkt_loss = loss_line[-3][0]
                     pkt_loss_units = loss_line[-3][-1]
                 
-                _eval = {
-                    'latency':{
-                        'rtt_min': float(rtts[0]),
-                        'rtt_avg': float(rtts[1]),
-                        'rtt_max': float(rtts[2]),
-                        'rtt_mdev': float(rtts[3]),
-                        'units': rtt_units},
-                    'frame_loss':{
-                        'frames': float(loss_line[0]),
-                        'frame_loss': float(pkt_loss),
-                        'units': pkt_loss_units,
-                    }
-                }    
+                
+
+                m1 = {
+                    "name": "rtt_min",
+                    "series": False,
+                    "type": "float",
+                    "unit": rtt_units,
+                    "value": float(rtts[0].replace(",", ".")),
+                }
+                
+                m2 = {
+                    "name": "rtt_avg",
+                    "series": False,
+                    "type": "float",
+                    "unit": rtt_units,
+                    "value": float(rtts[1].replace(",", ".")),
+                }
+
+                m3 = {
+                    "name": "rtt_max",
+                    "series": False,
+                    "type": "float",
+                    "unit": rtt_units,
+                    "value": float(rtts[2].replace(",", ".")),
+                }
+
+                m4 = {
+                    "name": "rtt_mdev",
+                    "series": False,
+                    "type": "float",
+                    "unit": rtt_units,
+                    "value": float(rtts[3].replace(",", ".")),
+                }
+
+                m5 = {
+                    "name": "frame_loss",
+                    "series": False,
+                    "type": "float",
+                    "unit": pkt_loss_units,
+                    "value": float(pkt_loss),
+                }
+
+                _eval = [m1, m2, m3, m4, m5]
+
         return _eval
 
 

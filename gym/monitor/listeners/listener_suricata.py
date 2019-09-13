@@ -332,35 +332,37 @@ class ListenerSuricata(Listener):
             interface = opts['interface']
 
         if duration and interface:
-            # try:
-            #     stats_diff = self.stats_diff(interface, duration)
-            # except Exception:
-            #     stats_diff = {}
-
             stats_diff = {}
             time.sleep(duration+1)                        
             eve_status = self._suricata_stats.final_status()
             stats_diff.update(eve_status)
-            
-            current = datetime.now()
-            _time = {'timestamp': current.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
-            results.update(_time)
             results.update(stats_diff)
         return results
 
     def parser(self, out):
-        return out
+        metrics = []
+
+        if "suricata_eve_timestamp" in out.keys():
+            del out["suricata_eve_timestamp"]
+
+        if "suricata_eve_event_type" in out.keys():
+            del out["suricata_eve_event_type"]
+
+        for name,value in out.items():
+            m = {
+                "name": name,
+                "series": False,
+                "type": "float",
+                "unit": "",
+                "value": float(value),
+            }
+
+            metrics.append(m)        
+        return metrics
+
 
 
 if __name__ == '__main__':
-    opts = {
-        'interface': 'wlp2s0',
-        'duration':2,
-    }
-    #
-    # app = ListenerDNS()
-    # print app.monitor(opts)
-    #
 
     app = ListenerSuricata()
     print(app.main())

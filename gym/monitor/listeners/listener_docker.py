@@ -42,7 +42,7 @@ class ListenerDocker(Listener):
             # self._dc = docker.DockerClient(base_url=self.url)
         except Exception as e:
             self._dc = None
-            logger.warn('could not connect to docker socket - check if docker is installed/running')
+            logger.warn('could not connect to docker socket - check if docker is installed/running %s', e)
         else:
             self._connected_to_docker = True
 
@@ -55,22 +55,31 @@ class ListenerDocker(Listener):
         summary_stats_cpu['cpu_total_usage'] = cpu_usage['total_usage'] 
         summary_stats_cpu['cpu_usage_in_kernelmode'] = cpu_usage['usage_in_kernelmode']
         summary_stats_cpu['cpu_usage_in_usermode'] = cpu_usage['usage_in_usermode']
+        # summary_stats_cpu['percpu_usage'] = cpu_usage['percpu_usage']
         summary_stats_cpu['cpu_percent'] = self._stats_cpu_perc(stats)
+        # print(self._get_docker_cpu(stats))
         return summary_stats_cpu
 
     def _stats_cpu_perc(self, stats):
         cpu_stats = stats['cpu_stats']
         cpu_usage = cpu_stats['cpu_usage']
         system_cpu_usage = cpu_stats['system_cpu_usage']
-        percpu = cpu_usage['percpu_usage']
+        # percpu = cpu_usage['percpu_usage']
         cpu_percent = 0.0
+
+        if 'online_cpus' in stats['cpu_stats']:
+            online_cpus = stats['cpu_stats']['online_cpus']
+        else:
+            online_cpus = len(stats['cpu_stats']['cpu_usage']['percpu_usage'] or [])
+
         if 'precpu_stats' in stats:
             precpu_stats = stats['precpu_stats']
             precpu_usage = precpu_stats['cpu_usage']
             cpu_delta = cpu_usage['total_usage'] - precpu_usage['total_usage']
             system_delta = system_cpu_usage - precpu_stats['system_cpu_usage']
             if system_delta > 0 and cpu_delta > 0:
-                cpu_percent = 100.0 * cpu_delta / system_delta * len(percpu)
+                # cpu_percent = (100.0 * (cpu_delta / system_delta)) * len(percpu) 
+                cpu_percent = (100.0 * (cpu_delta / system_delta)) * online_cpus 
         return cpu_percent
 
     def _stats_mem(self, stats):
@@ -178,7 +187,6 @@ class ListenerDocker(Listener):
         past = datetime.now()
         while True:
             current = datetime.now()
-            _time = {'timestamp': current.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
             seconds = (current-past).total_seconds()
             if seconds > t:
                 break
@@ -186,45 +194,43 @@ class ListenerDocker(Listener):
                 measurement = self._stats(name=name)
                 if 'read' in measurement:
                     del measurement['read']
-                measurement = self._floats(measurement)
-                measurement.update(_time)
+                
                 results.append(measurement)        
                 time.sleep(interval)
         return results
 
-    def _floats(self, eval):
-        if any([True if type(value) is list else False for value in eval.values()]):
-            list_keys = [key for key,value in eval.items() if type(value) is list ]
-            for key in list_keys:
-                value = eval[key]
-                new_value = [float(v) for v in value  if type(v) is int or type(v) is float ]
-                eval[key] = new_value
-        if any([True if type(value) is dict else False for value in eval.values()]):
-            dict_keys = [key for key, value in eval.items() if type(value) is dict]
-            for key in dict_keys:
-                eval[key] = self._floats(eval[key])
-        if type(eval) is list:
-            eval = [float(v) for v in eval if type(v) is int or type(v) is float]
-        if type(eval) is dict:
-            for key, value in eval.items():
-                if type(value) is int or type(value) is float:
-                    eval[key] = float(value)
-        return eval
-
     def parser(self, out):
-        return out
+        metrics = []
+
+        if out:
+            metric_names = list(out[0].keys())
+            for name in metric_names:
+                metric_values = [ float(out_value.get(name)) for out_value in out ]
+
+                m = {
+                    "name": name,
+                    "series": True,
+                    "type": "float",
+                    "unit": "",
+                    "value": metric_values,
+                }
+
+                metrics.append(m)
+        
+        return metrics
 
 if __name__ == '__main__':
     opts = {
         'interval':1,
-        'duration':1,
+        'duration':5,
         'target':'elastic',
     }
 
     # docker_listener = ListenerDocker()
     # measures = docker_listener.monitor(opts)
-    # for v in measures:
-    #     print v
+    # metrics = docker_listener.parser(measures)
+    # for v in metrics:
+    #     print(v)
 
     app = ListenerDocker()
     print(app.main())

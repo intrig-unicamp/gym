@@ -1,23 +1,46 @@
 {
-    "id": "004",
+    "id": "003",
     "method": "layout",
     "params": {
         "callback": "http://127.0.0.1:7879/001",
         "vnf_bd": {
-            "id": "004",
+            "id": "003",
             "inputs": {
                 "sut": {
-                    "entrypoint": ["./start.sh big_ruleset", "./start.sh small_ruleset", "./start.sh empty"],
+                    "id": "d2",
+                    "image": "vnf/suricata:0.1",
+                    "description": "Suricata VNF for testing only",
+                    "configuration": ["big_ruleset", "small_ruleset", "empty"],
                     "resources": {
                         "cpu_cores": "0",
-                        "cpu_bw": [1.0],
+                        "cpu_bw": 1.0,
                         "vcpus": 1,
-                        "mem_size": 1024
+                        "memory": 1024
                     }
                 },
+                "agent_one": {
+                    "id":"d1",
+                    "image": "raphaelvrosa/gym:0.1",
+                    "volumes": "/mnt/pcaps/:/mnt/pcaps:rw"
+                },
+                "agent_two": {
+                    "id":"d3",
+                    "image": "raphaelvrosa/gym:0.1"
+                },
+                "manager": {
+                    "id":"d6",
+                    "type": "manager",
+                    "image": "raphaelvrosa/gym:0.1"
+                },
+                "monitor": {
+                    "id":"d4"
+                },
+                "monitor_tap": {
+                    "id":"d5"
+                },
                 "settings": {
-                    "trials": 2,
                     "tests": 2,
+                    "trials": 2,
                     "duration":"30",
                     "interval": "1",
                     "vm_mon_interface": "input",
@@ -30,17 +53,16 @@
                         "replayloop": "1000"
                     },
                     "monitor": {
-                        "mon_container_target": "mn.d2"
+                        "mon_container_target": "d2"
                     }
+                },
+                "links": {
+                    "network_one": "s1",
+                    "network_two": "s2",
+                    "network_type": "E-Flow"
                 }                
             }
-        },
-        "time": {
-            "duration": null,
-            "every": 0,
-            "repeat": 0,
-            "timestamp": "Tue, 28 Feb 2017 12:18:05",
-            "when": null
         }
     }
 }
+                    
